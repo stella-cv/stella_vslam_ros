@@ -121,7 +121,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Threads REQUIRED)
 
 # OpenVSLAM
-find_library(OpenVSLAM_LIB openvslam HINTS ${OpenVSLAM_LIB_DIR})
+find_package(openvslam REQUIRED)
 
 # OpenCV
 find_package(OpenCV 3.3.1 QUIET)
@@ -151,9 +151,9 @@ set(json_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/3rd/json/include)
 include_directories(${json_INCLUDE_DIR})
 
 # pangolin viewer
-set(USE_PANGOLIN_VIEWER ON CACHE BOOL "Enable Pangolin Viewer")
+set(USE_PANGOLIN_VIEWER OFF CACHE BOOL "Enable Pangolin Viewer")
 if(USE_PANGOLIN_VIEWER)
-    find_library(Pangolin_Viewer_LIB pangolin_viewer HINTS ${OpenVSLAM_LIB_DIR})
+    find_library(Pangolin_Viewer_LIB pangolin_viewer)
     find_package(Pangolin REQUIRED)
 endif()
 
@@ -162,7 +162,7 @@ set(USE_SOCKET_PUBLISHER OFF CACHE BOOL "Enable Socket Publisher")
 if(USE_SOCKET_PUBLISHER)
     find_package(sioclient REQUIRED)
     find_package(Protobuf REQUIRED)
-    find_library(Socket_Publisher_LIB socket_publisher HINTS ${OpenVSLAM_LIB_DIR})
+    find_library(Socket_Publisher_LIB socket_publisher)
     if(NOT PROTOBUF_PROTOC_EXECUTABLE)
         message(FATAL_ERROR "Could not find protoc executable (PROTOBUF_PROTOC_EXECUTABLE)")
     endif()
@@ -177,28 +177,6 @@ endif()
 catkin_package(CATKIN_DEPENDS
         cv_bridge
         image_transport)
-
-#################
-# BoW framework #
-#################
-
-set(BOW_FRAMEWORK "DBoW2" CACHE STRING "DBoW2 or FBoW")
-set_property(CACHE BOW_FRAMEWORK PROPERTY STRINGS "DBoW2" "FBoW")
-
-if(BOW_FRAMEWORK MATCHES "DBoW2")
-    find_package(DBoW2 REQUIRED)
-    set(BOW_INCLUDE_DIRS ${DBoW2_INCLUDE_DIRS})
-    set(BOW_LIBS ${DBoW2_LIBS})
-    add_definitions(-DUSE_DBOW2)
-elseif(BOW_FRAMEWORK MATCHES "FBoW")
-    find_package(fbow REQUIRED)
-    set(BOW_INCLUDE_DIRS ${fbow_INCLUDE_DIRS})
-    set(BOW_LIBS ${fbow_LIBS})
-else()
-    message(FATAL_ERROR "Invalid BoW framework: ${BOW_FRAMEWORK}")
-endif()
-include_directories(${BOW_INCLUDE_DIRS})
-message(STATUS "BoW framework: ${BOW_FRAMEWORK} (found in ${BOW_INCLUDE_DIRS})")
 
 #########
 # Build #

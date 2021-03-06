@@ -15,6 +15,7 @@
 
     <buildtool_depend>catkin</buildtool_depend>
 
+    <depend>openvslam</depend>
     <depend>eigen</depend>
     <depend>libgoogle-glog-dev</depend>
     <depend>image_transport</depend>
