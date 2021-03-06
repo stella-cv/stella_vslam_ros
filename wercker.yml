@@ -8,7 +8,7 @@ clang_format:
     - script:
       name: apply clang-format
       code: |
-        DIRS_TO_EXCLUDE=".git cmake build .idea cmake-build-debug cmake-build-release"
+        DIRS_TO_EXCLUDE=".git 3rd cmake build .idea cmake-build-debug cmake-build-release"
         for DIR in ${DIRS_TO_EXCLUDE}; do
           EXCLUDE_CMD="${EXCLUDE_CMD} -type d -name ${DIR} -prune -o"
         done
