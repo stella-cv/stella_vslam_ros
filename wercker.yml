@@ -44,7 +44,7 @@ build:
         cd openvslam
         mkdir build
         cd build
-        cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_WITH_MARCH_NATIVE=OFF -DUSE_PANGOLIN_VIEWER=OFF -DUSE_SOCKET_PUBLISHER=OFF -DUSE_STACK_TRACE_LOGGER=ON -DBOW_FRAMEWORK=DBoW2 -DBUILD_TESTS=ON -DUSE_SSE_ORB=ON ..
+        CMAKE_PREFIX_PATH=/opt/ros/${ROS_DISTRO}/lib/cmake cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_WITH_MARCH_NATIVE=OFF -DUSE_PANGOLIN_VIEWER=OFF -DUSE_SOCKET_PUBLISHER=OFF -DUSE_STACK_TRACE_LOGGER=ON -DBOW_FRAMEWORK=DBoW2 -DBUILD_TESTS=ON -DUSE_SSE_ORB=ON ..
         make -j $(($(nproc) / 2))
         make install
         cd ../../
@@ -55,9 +55,6 @@ build:
         mkdir -p ../ros_ws/src
         cp -r . ../ros_ws/src/openvslam_ros
         cd ../ros_ws
-        git clone --branch ${ROS2_DISTRO} --depth 1 https://github.com/ros-perception/vision_opencv.git
-        cp -r vision_opencv/cv_bridge src/
-        rm -rf vision_opencv
         (source /opt/ros/${ROS2_DISTRO}/setup.bash && colcon build --parallel-workers $(($(nproc) / 2)) --cmake-args -DBUILD_WITH_MARCH_NATIVE=OFF -DUSE_PANGOLIN_VIEWER=OFF -DUSE_SOCKET_PUBLISHER=OFF -DUSE_STACK_TRACE_LOGGER=ON -DBOW_FRAMEWORK=DBoW2)
     - script:
       name: run run_slam
