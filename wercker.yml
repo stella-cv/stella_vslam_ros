@@ -1,5 +1,5 @@
 box:
-  id: ghcr.io/ymd-stella/openvslam-community/openvslam-ros:latest
+  id: ghcr.io/ymd-stella/openvslam-community/openvslam-ros2:latest
 
 no-response-timeout: 20
 
@@ -50,34 +50,28 @@ build:
         cd ../../
         rm -r openvslam
     - script:
-      name: build ros packages
+      name: build ros2 packages
       code: |
         mkdir -p ../ros_ws/src
         cp -r . ../ros_ws/src/openvslam_ros
         cd ../ros_ws
-        git clone --branch ${ROS_DISTRO} --depth 1 https://github.com/ros-perception/vision_opencv.git
+        git clone --branch ${ROS2_DISTRO} --depth 1 https://github.com/ros-perception/vision_opencv.git
         cp -r vision_opencv/cv_bridge src/
         rm -rf vision_opencv
-        source /opt/ros/${ROS_DISTRO}/setup.bash
-        catkin_make -j$(($(nproc) / 2)) -DBUILD_WITH_MARCH_NATIVE=OFF -DUSE_PANGOLIN_VIEWER=OFF -DUSE_SOCKET_PUBLISHER=OFF -DUSE_STACK_TRACE_LOGGER=ON -DBOW_FRAMEWORK=DBoW2
+        (source /opt/ros/${ROS2_DISTRO}/setup.bash && colcon build --parallel-workers $(($(nproc) / 2)) --cmake-args -DBUILD_WITH_MARCH_NATIVE=OFF -DUSE_PANGOLIN_VIEWER=OFF -DUSE_SOCKET_PUBLISHER=OFF -DUSE_STACK_TRACE_LOGGER=ON -DBOW_FRAMEWORK=DBoW2)
     - script:
       name: run run_slam
       code: |
-        source /opt/ros/${ROS_DISTRO}/setup.bash
-        source ../ros_ws/devel/setup.bash
-        roscore&
-        rosrun openvslam_ros run_slam -v /datasets/orb_vocab/orb_vocab.dbow2 -c example/euroc/EuRoC_mono.yaml --map-db map.msg /camera/image_raw:=/cam0/image_raw&
-        rosbag play /datasets/EuRoC/MH_04_difficult.bag
+        (source /opt/ros/${ROS2_DISTRO}/setup.bash && source ../ros_ws/install/setup.bash && ros2 run openvslam_ros run_slam -v /datasets/orb_vocab/orb_vocab.dbow2 -c example/euroc/EuRoC_mono.yaml --map-db map.msg --ros-args -r /camera/image_raw:=/cam0/image_raw)&
+        (source /opt/ros/${ROS1_DISTRO}/setup.bash && source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 bag play -s rosbag_v2 /datasets/EuRoC/MH_04_difficult.bag)
+        sleep 1
+        echo "pkill -SIGINT -f run_slam"
         pkill -SIGINT -f run_slam
-        pkill -SIGINT roscore
+        sleep 10
     - script:
       name: run run_localization
       code: |
-        source /opt/ros/${ROS_DISTRO}/setup.bash
-        source ../ros_ws/devel/setup.bash
-        roscore&
-        rosrun openvslam_ros run_localization -v /datasets/orb_vocab/orb_vocab.dbow2 -c example/euroc/EuRoC_mono.yaml --map-db map.msg /camera/image_raw:=/cam0/image_raw&
+        (source /opt/ros/${ROS2_DISTRO}/setup.bash && source ../ros_ws/install/setup.bash && ros2 run openvslam_ros run_localization -v /datasets/orb_vocab/orb_vocab.dbow2 -c example/euroc/EuRoC_mono.yaml --map-db map.msg --ros-args -r /camera/image_raw:=/cam0/image_raw)&
         sleep 5
-        rosbag play /datasets/EuRoC/MH_04_difficult.bag
+        (source /opt/ros/${ROS1_DISTRO}/setup.bash && source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 bag play -s rosbag_v2 /datasets/EuRoC/MH_04_difficult.bag)
         pkill -SIGINT -f run_localization
-        pkill -SIGINT roscore
