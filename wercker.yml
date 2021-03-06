@@ -38,24 +38,15 @@ build:
         ccache -M 950M
         ccache -s
     - script:
-      name: install openvslam
-      code: |
-        git clone --depth 1 https://github.com/OpenVSLAM-Community/openvslam.git
-        cd openvslam
-        mkdir build
-        cd build
-        CMAKE_PREFIX_PATH=/opt/ros/${ROS_DISTRO}/lib/cmake cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_WITH_MARCH_NATIVE=OFF -DUSE_PANGOLIN_VIEWER=OFF -DUSE_SOCKET_PUBLISHER=OFF -DUSE_STACK_TRACE_LOGGER=ON -DBOW_FRAMEWORK=DBoW2 -DBUILD_TESTS=ON -DUSE_SSE_ORB=ON ..
-        make -j $(($(nproc) / 2))
-        make install
-        cd ../../
-        rm -r openvslam
-    - script:
       name: build ros2 packages
       code: |
         mkdir -p ../ros_ws/src
         cp -r . ../ros_ws/src/openvslam_ros
-        cd ../ros_ws
-        (source /opt/ros/${ROS2_DISTRO}/setup.bash && colcon build --parallel-workers $(($(nproc) / 2)) --cmake-args -DBUILD_WITH_MARCH_NATIVE=OFF -DUSE_PANGOLIN_VIEWER=OFF -DUSE_SOCKET_PUBLISHER=OFF -DUSE_STACK_TRACE_LOGGER=ON -DBOW_FRAMEWORK=DBoW2)
+        cd ../ros_ws/src
+        git clone --depth 1 https://github.com/OpenVSLAM-Community/openvslam.git
+        cd ..
+        export MAKEFLAGS="-j $(($(nproc) / 2))"
+        (source /opt/ros/${ROS2_DISTRO}/setup.bash && colcon build --parallel-workers 1)
     - script:
       name: run run_slam
       code: |
