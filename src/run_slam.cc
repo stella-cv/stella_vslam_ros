@@ -13,6 +13,9 @@
 #include <chrono>
 #include <numeric>
 
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/highgui/highgui.hpp>
 #include <spdlog/spdlog.h>
 #include <popl.hpp>
 
@@ -25,17 +28,10 @@
 #endif
 
 void tracking(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path,
-              const std::string& mask_img_path, const bool eval_log, const std::string& map_db_path,
-              const bool rectify) {
+              const std::string& mask_img_path, const bool eval_log, const std::string& map_db_path) {
     std::shared_ptr<openvslam_ros::system> ros;
     if (cfg->camera_->setup_type_ == openvslam::camera::setup_type_t::Monocular) {
         ros = std::make_shared<openvslam_ros::mono>(cfg, vocab_file_path, mask_img_path);
-    }
-    else if (cfg->camera_->setup_type_ == openvslam::camera::setup_type_t::Stereo) {
-        ros = std::make_shared<openvslam_ros::stereo>(cfg, vocab_file_path, mask_img_path, rectify);
-    }
-    else if (cfg->camera_->setup_type_ == openvslam::camera::setup_type_t::RGBD) {
-        ros = std::make_shared<openvslam_ros::rgbd>(cfg, vocab_file_path, mask_img_path);
     }
     else {
         throw std::runtime_error("Invalid setup type: " + cfg->camera_->get_setup_type_string());
@@ -53,6 +49,7 @@ void tracking(const std::shared_ptr<openvslam::config>& cfg, const std::string& 
     socket_publisher::publisher publisher(cfg, &SLAM, SLAM.get_frame_publisher(), SLAM.get_map_publisher());
 #endif
 
+    // TODO: Pangolin needs to run in the main thread on OSX
     // run the viewer in another thread
 #ifdef USE_PANGOLIN_VIEWER
     std::thread thread([&]() {
@@ -62,7 +59,7 @@ void tracking(const std::shared_ptr<openvslam::config>& cfg, const std::string& 
             while (SLAM.loop_BA_is_running()) {
                 std::this_thread::sleep_for(std::chrono::microseconds(5000));
             }
-            ros::shutdown();
+            rclcpp::shutdown();
         }
     });
 #elif USE_SOCKET_PUBLISHER
@@ -73,16 +70,16 @@ void tracking(const std::shared_ptr<openvslam::config>& cfg, const std::string& 
             while (SLAM.loop_BA_is_running()) {
                 std::this_thread::sleep_for(std::chrono::microseconds(5000));
             }
-            ros::shutdown();
+            rclcpp::shutdown();
         }
     });
 #endif
 
-    ros::Rate pub_rate(10);
-    while (ros::ok()) {
+    rclcpp::Rate pub_rate(10);
+    while (rclcpp::ok()) {
         ros->publish_pose();
+        ros->exec_.spin_some();
         pub_rate.sleep();
-        ros::spinOnce();
     }
 
     // automatically close the viewer
@@ -130,7 +127,7 @@ int main(int argc, char* argv[]) {
     google::InitGoogleLogging(argv[0]);
     google::InstallFailureSignalHandler();
 #endif
-    ros::init(argc, argv, "run_slam");
+    rclcpp::init(argc, argv);
 
     // create options
     popl::OptionParser op("Allowed options");
@@ -141,7 +138,6 @@ int main(int argc, char* argv[]) {
     auto debug_mode = op.add<popl::Switch>("", "debug", "debug mode");
     auto eval_log = op.add<popl::Switch>("", "eval-log", "store trajectory and tracking times for evaluation");
     auto map_db_path = op.add<popl::Value<std::string>>("", "map-db", "store a map database at this path after SLAM", "");
-    auto rectify = op.add<popl::Switch>("r", "rectify", "rectify stereo image");
     try {
         op.parse(argc, argv);
     }
@@ -188,7 +184,7 @@ int main(int argc, char* argv[]) {
 #endif
 
     // run tracking
-    tracking(cfg, vocab_file_path->value(), mask_img_path->value(), eval_log->is_set(), map_db_path->value(), rectify->value());
+    tracking(cfg, vocab_file_path->value(), mask_img_path->value(), eval_log->is_set(), map_db_path->value());
 
 #ifdef USE_GOOGLE_PERFTOOLS
     ProfilerStop();

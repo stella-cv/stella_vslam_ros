@@ -8,6 +8,7 @@ endif()
 
 set(EXECUTABLE_TARGETS "")
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_executable(run_slam run_slam.cc openvslam_ros.cc)
 list(APPEND EXECUTABLE_TARGETS run_slam)
 
@@ -15,8 +16,6 @@ add_executable(run_localization run_localization.cc openvslam_ros.cc)
 list(APPEND EXECUTABLE_TARGETS run_localization)
 
 foreach(EXECUTABLE_TARGET IN LISTS EXECUTABLE_TARGETS)
-    add_dependencies(${EXECUTABLE_TARGET} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
     # pangolin_viewer is used on a priority basis
     if(USE_PANGOLIN_VIEWER)
         # set macro flag
@@ -50,4 +49,13 @@ foreach(EXECUTABLE_TARGET IN LISTS EXECUTABLE_TARGETS)
                 ${GPERFTOOLS_LIBRARIES})
     endif()
 
+    # build
+    target_include_directories(${EXECUTABLE_TARGET}
+                               PRIVATE ${rclcpp_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
+    target_link_libraries(${EXECUTABLE_TARGET}
+                          PRIVATE ${openvslam_LIBS} ${rclcpp_LIBRARIES} ${OpenCV_LIBRARIES})
+    ament_target_dependencies(${EXECUTABLE_TARGET}
+                              PUBLIC rclcpp cv_bridge image_transport rcutils nav_msgs)
+    install(TARGETS ${EXECUTABLE_TARGET}
+            DESTINATION lib/${PROJECT_NAME})
 endforeach()

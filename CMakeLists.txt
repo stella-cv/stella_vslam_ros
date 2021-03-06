@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.5)
 project(openvslam_ros LANGUAGES CXX C)
 
 if(POLICY CMP0042)
@@ -113,9 +113,11 @@ endif()
 # Find packages #
 #################
 
-find_package(catkin REQUIRED COMPONENTS
-        cv_bridge
-        image_transport)
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(image_transport REQUIRED)
+find_package(nav_msgs REQUIRED)
 
 # thread library
 find_package(Threads REQUIRED)
@@ -135,7 +137,7 @@ message(STATUS "Use OpenCV ${OpenCV_VERSION}")
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 # Eigen
-find_package(Eigen3 3.2 REQUIRED)
+find_package(Eigen3 3.3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
 # spdlog
@@ -170,25 +172,10 @@ if(USE_SOCKET_PUBLISHER)
     include_directories(${SIOCLIENT_INCLUDE_DIR} ${PROTOBUF_INCLUDE_DIRS})
 endif()
 
-#################################
-# catkin specific configuration #
-#################################
-
-catkin_package(CATKIN_DEPENDS
-        cv_bridge
-        image_transport)
-
 #########
 # Build #
 #########
 
-include_directories(
-        ${catkin_INCLUDE_DIRS}
-        ${OpenVSLAM_SRC_DIR}
-        src)
-
-link_libraries(
-        ${catkin_LIBRARIES}
-        ${OpenVSLAM_LIB})
-
 add_subdirectory(src)
+
+ament_package()
