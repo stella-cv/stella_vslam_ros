@@ -8,6 +8,7 @@
 #include <openvslam/config.h>
 #include <openvslam_ros.h>
 
+#include <fstream>
 #include <iostream>
 #include <chrono>
 #include <numeric>
