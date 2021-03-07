@@ -44,7 +44,9 @@ build:
         cp -r . ../ros_ws/src/openvslam_ros
         cd ../ros_ws/src
         git clone --depth 1 https://github.com/OpenVSLAM-Community/openvslam.git
-        cd ..
+        cd openvslam
+        git submodule update -i --recursive
+        cd ../..
         export MAKEFLAGS="-j $(($(nproc) / 2))"
         (source /opt/ros/${ROS2_DISTRO}/setup.bash && colcon build --parallel-workers 1)
     - script:
