@@ -65,3 +65,21 @@ build:
         sleep 5
         (source /opt/ros/${ROS1_DISTRO}/setup.bash && source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 bag play -s rosbag_v2 /datasets/EuRoC/MH_04_difficult.bag)
         pkill -SIGINT -f run_localization
+
+rosdep_foxy:
+  box: ghcr.io/ymd-stella/openvslam-community/ros:foxy-ros-base
+  steps:
+    - script:
+      name: build ros2 packages
+      code: |
+        apt update
+        mkdir -p ../ros_ws/src
+        cp -r . ../ros_ws/src/openvslam_ros
+        cd ../ros_ws/src
+        git clone --depth 1 https://github.com/OpenVSLAM-Community/openvslam.git
+        cd openvslam
+        git submodule update -i --recursive
+        cd ../..
+        rosdep install -y -i --from-paths src
+        export MAKEFLAGS="-j $(($(nproc) / 2))"
+        (source /opt/ros/${ROS_DISTRO}/setup.bash && colcon build --parallel-workers 1)
