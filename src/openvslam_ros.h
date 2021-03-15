@@ -16,7 +16,7 @@
 #include <nav_msgs/msg/odometry.hpp>
 
 #include <opencv2/core/core.hpp>
-#include <sensor_msgs/msg/detail/image__struct.hpp>
+#include <sensor_msgs/msg/image.hpp>
 
 namespace openvslam_ros {
 class system {
