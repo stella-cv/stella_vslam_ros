@@ -48,8 +48,7 @@ public:
     void callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const sensor_msgs::msg::Image::ConstSharedPtr& right);
 
     std::shared_ptr<openvslam::util::stereo_rectifier> rectifier_;
-    message_filters::Subscriber<sensor_msgs::msg::Image> left_sf_;
-    message_filters::Subscriber<sensor_msgs::msg::Image> right_sf_;
+    message_filters::Subscriber<sensor_msgs::msg::Image> left_sf_, right_sf_;
     message_filters::TimeSynchronizer<sensor_msgs::msg::Image, sensor_msgs::msg::Image> sync_;
 };
 
@@ -58,8 +57,7 @@ public:
     rgbd(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path);
     void callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const sensor_msgs::msg::Image::ConstSharedPtr& depth);
 
-    message_filters::Subscriber<sensor_msgs::msg::Image> color_sf_;
-    message_filters::Subscriber<sensor_msgs::msg::Image> depth_sf_;
+    message_filters::Subscriber<sensor_msgs::msg::Image> color_sf_, depth_sf_;
     message_filters::TimeSynchronizer<sensor_msgs::msg::Image, sensor_msgs::msg::Image> sync_;
 };
 
