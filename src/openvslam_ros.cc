@@ -76,7 +76,7 @@ stereo::stereo(const std::shared_ptr<openvslam::config>& cfg, const std::string&
     sync_.registerCallback(&stereo::callback, this);
 }
 
-void stereo::callback(const sensor_msgs::msg::Image::ConstPtr& left, const sensor_msgs::msg::Image::ConstPtr& right) {
+void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const sensor_msgs::msg::Image::ConstSharedPtr& right) {
     auto leftcv = cv_bridge::toCvShare(left)->image;
     auto rightcv = cv_bridge::toCvShare(right)->image;
     if (leftcv.empty() || rightcv.empty()) {
@@ -99,4 +99,33 @@ void stereo::callback(const sensor_msgs::msg::Image::ConstPtr& left, const senso
     //track times in seconds
     track_times_.push_back(track_time);
 }
+
+rgbd::rgbd(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
+    : system(cfg, vocab_file_path, mask_img_path),
+      color_sf_(node_, "camera/color/image_raw"),
+      depth_sf_(node_, "camera/depth/image_raw"),
+      sync_(color_sf_, depth_sf_, 10) {
+    sync_.registerCallback(&rgbd::callback, this);
+}
+
+void rgbd::callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const sensor_msgs::msg::Image::ConstSharedPtr& depth) {
+    auto colorcv = cv_bridge::toCvShare(color)->image;
+    auto depthcv = cv_bridge::toCvShare(depth)->image;
+    if (colorcv.empty() || depthcv.empty()) {
+        return;
+    }
+
+    const rclcpp::Time tp_1 = node_->now();
+    const double timestamp = tp_1.seconds();
+
+    // input the current frame and estimate the camera pose
+    SLAM_.feed_RGBD_frame(colorcv, depthcv, timestamp, mask_);
+
+    const rclcpp::Time tp_2 = node_->now();
+    const double track_time = (tp_2 - tp_1).seconds();
+
+    // track time in seconds
+    track_times_.push_back(track_time);
+}
+
 } // namespace openvslam_ros
