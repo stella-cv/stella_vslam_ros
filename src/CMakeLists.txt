@@ -55,7 +55,13 @@ foreach(EXECUTABLE_TARGET IN LISTS EXECUTABLE_TARGETS)
     target_link_libraries(${EXECUTABLE_TARGET}
                           PRIVATE ${openvslam_LIBS} ${rclcpp_LIBRARIES} ${OpenCV_LIBRARIES})
     ament_target_dependencies(${EXECUTABLE_TARGET}
-                              PUBLIC rclcpp cv_bridge image_transport message_filters rcutils nav_msgs)
+                              PUBLIC    rclcpp 
+                                        tf2_ros
+                                        cv_bridge 
+                                        image_transport 
+                                        message_filters 
+                                        rcutils 
+                                        nav_msgs)
     install(TARGETS ${EXECUTABLE_TARGET}
             DESTINATION lib/${PROJECT_NAME})
 endforeach()

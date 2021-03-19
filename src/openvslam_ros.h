@@ -14,6 +14,7 @@
 #include <message_filters/time_synchronizer.h>
 #include <cv_bridge/cv_bridge.h>
 #include <nav_msgs/msg/odometry.hpp>
+#include <tf2_ros/transform_broadcaster.h>
 
 #include <opencv2/core/core.hpp>
 #include <sensor_msgs/msg/image.hpp>
@@ -22,7 +23,7 @@ namespace openvslam_ros {
 class system {
 public:
     system(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path);
-    void publish_pose();
+    void publish_map_odom_transform();
     openvslam::system SLAM_;
     std::shared_ptr<openvslam::config> cfg_;
     std::shared_ptr<rclcpp::Node> node_;
@@ -31,6 +32,7 @@ public:
     cv::Mat mask_;
     std::vector<double> track_times_;
     std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::Odometry>> pose_pub_;
+    std::shared_ptr<tf2_ros::TransformBroadcaster> odom_broadcaster_;
 };
 
 class mono : public system {

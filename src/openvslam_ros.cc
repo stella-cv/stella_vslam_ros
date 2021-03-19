@@ -11,12 +11,13 @@ namespace openvslam_ros {
 system::system(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
     : SLAM_(cfg, vocab_file_path), cfg_(cfg), node_(std::make_shared<rclcpp::Node>("run_slam")), custom_qos_(rmw_qos_profile_default),
       mask_(mask_img_path.empty() ? cv::Mat{} : cv::imread(mask_img_path, cv::IMREAD_GRAYSCALE)),
-      pose_pub_(node_->create_publisher<nav_msgs::msg::Odometry>("~/camera_pose", 1)) {
+      pose_pub_(node_->create_publisher<nav_msgs::msg::Odometry>("~/camera_pose", 1)),
+      odom_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>(node_)) {
     custom_qos_.depth = 1;
     exec_.add_node(node_);
 }
 
-void system::publish_pose() {
+void system::publish_map_odom_transform() {
     // SLAM get the motion matrix publisher
     auto cam_pose_wc = SLAM_.get_map_publisher()->get_current_cam_pose_wc();
 
@@ -36,7 +37,7 @@ void system::publish_pose() {
     nav_msgs::msg::Odometry pose_msg;
     pose_msg.header.stamp = node_->now();
     pose_msg.header.frame_id = "map";
-    pose_msg.child_frame_id = "camera_link";
+    pose_msg.child_frame_id = "odom";
     pose_msg.pose.pose.orientation.x = quat.x();
     pose_msg.pose.pose.orientation.y = quat.y();
     pose_msg.pose.pose.orientation.z = quat.z();
@@ -45,6 +46,21 @@ void system::publish_pose() {
     pose_msg.pose.pose.position.y = trans(1);
     pose_msg.pose.pose.position.z = trans(2);
     pose_pub_->publish(pose_msg);
+
+    // Create transform message between map->odom
+    geometry_msgs::msg::TransformStamped odom_trans;
+    odom_trans.header.stamp =  node_->now();
+    odom_trans.header.frame_id = "map";
+    odom_trans.child_frame_id = "odom";
+    odom_trans.transform.rotation.x = quat.x();
+    odom_trans.transform.rotation.y = quat.y();
+    odom_trans.transform.rotation.z = quat.z();
+    odom_trans.transform.rotation.w = quat.w();
+    odom_trans.transform.translation.x = trans(0);
+    odom_trans.transform.translation.y = trans(1);
+    odom_trans.transform.translation.z = trans(2);
+    odom_broadcaster_->sendTransform(odom_trans);
+
 }
 
 mono::mono(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
