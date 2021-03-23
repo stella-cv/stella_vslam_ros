@@ -12,12 +12,12 @@ system::system(const std::shared_ptr<openvslam::config>& cfg, const std::string&
     : SLAM_(cfg, vocab_file_path), cfg_(cfg), node_(std::make_shared<rclcpp::Node>("run_slam")), custom_qos_(rmw_qos_profile_default),
       mask_(mask_img_path.empty() ? cv::Mat{} : cv::imread(mask_img_path, cv::IMREAD_GRAYSCALE)),
       pose_pub_(node_->create_publisher<nav_msgs::msg::Odometry>("~/camera_pose", 1)),
-      odom_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>(node_)) {
+      map_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>(node_)) {
     custom_qos_.depth = 1;
     exec_.add_node(node_);
 }
 
-void system::publish_map_odom_transform() {
+void system::publish_pose() {
     // SLAM get the motion matrix publisher
     auto cam_pose_wc = SLAM_.get_map_publisher()->get_current_cam_pose_wc();
 
@@ -37,7 +37,7 @@ void system::publish_map_odom_transform() {
     nav_msgs::msg::Odometry pose_msg;
     pose_msg.header.stamp = node_->now();
     pose_msg.header.frame_id = "map";
-    pose_msg.child_frame_id = "odom";
+    pose_msg.child_frame_id = "camera_link";
     pose_msg.pose.pose.orientation.x = quat.x();
     pose_msg.pose.pose.orientation.y = quat.y();
     pose_msg.pose.pose.orientation.z = quat.z();
@@ -47,19 +47,19 @@ void system::publish_map_odom_transform() {
     pose_msg.pose.pose.position.z = trans(2);
     pose_pub_->publish(pose_msg);
 
-    // Create transform message between map->odom
-    geometry_msgs::msg::TransformStamped odom_trans;
-    odom_trans.header.stamp =  node_->now();
-    odom_trans.header.frame_id = "map";
-    odom_trans.child_frame_id = "odom";
-    odom_trans.transform.rotation.x = quat.x();
-    odom_trans.transform.rotation.y = quat.y();
-    odom_trans.transform.rotation.z = quat.z();
-    odom_trans.transform.rotation.w = quat.w();
-    odom_trans.transform.translation.x = trans(0);
-    odom_trans.transform.translation.y = trans(1);
-    odom_trans.transform.translation.z = trans(2);
-    odom_broadcaster_->sendTransform(odom_trans);
+    // Create transform message between map->camera_link
+    geometry_msgs::msg::TransformStamped map_trans;
+    map_trans.header.stamp =  node_->now();
+    map_trans.header.frame_id = "map";
+    map_trans.child_frame_id = "camera_link";
+    map_trans.transform.rotation.x = quat.x();
+    map_trans.transform.rotation.y = quat.y();
+    map_trans.transform.rotation.z = quat.z();
+    map_trans.transform.rotation.w = quat.w();
+    map_trans.transform.translation.x = trans(0);
+    map_trans.transform.translation.y = trans(1);
+    map_trans.transform.translation.z = trans(2);
+    map_broadcaster_->sendTransform(map_trans);
 
 }
 

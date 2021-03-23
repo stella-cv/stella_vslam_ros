@@ -91,7 +91,7 @@ void localization(const std::shared_ptr<openvslam::config>& cfg, const std::stri
 
     rclcpp::Rate pub_rate(10);
     while (rclcpp::ok()) {
-        ros->publish_map_odom_transform();
+        ros->publish_pose();
         ros->exec_.spin_some();
         pub_rate.sleep();
     }

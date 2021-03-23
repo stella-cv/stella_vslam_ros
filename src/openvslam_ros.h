@@ -23,7 +23,7 @@ namespace openvslam_ros {
 class system {
 public:
     system(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path);
-    void publish_map_odom_transform();
+    void publish_pose();
     openvslam::system SLAM_;
     std::shared_ptr<openvslam::config> cfg_;
     std::shared_ptr<rclcpp::Node> node_;
@@ -32,7 +32,7 @@ public:
     cv::Mat mask_;
     std::vector<double> track_times_;
     std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::Odometry>> pose_pub_;
-    std::shared_ptr<tf2_ros::TransformBroadcaster> odom_broadcaster_;
+    std::shared_ptr<tf2_ros::TransformBroadcaster> map_broadcaster_;
 };
 
 class mono : public system {
