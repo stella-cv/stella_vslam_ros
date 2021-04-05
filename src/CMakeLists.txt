@@ -61,6 +61,7 @@ foreach(EXECUTABLE_TARGET IN LISTS EXECUTABLE_TARGETS)
                                         image_transport 
                                         message_filters 
                                         rcutils 
+					tf2_geometry_msgs
                                         nav_msgs)
     install(TARGETS ${EXECUTABLE_TARGET}
             DESTINATION lib/${PROJECT_NAME})
