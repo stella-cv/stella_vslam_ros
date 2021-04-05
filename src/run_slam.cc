@@ -82,6 +82,7 @@ void tracking(const std::shared_ptr<openvslam::config>& cfg, const std::string& 
 #endif
 
     rclcpp::Rate pub_rate(10);
+    ros->setParams();
     while (rclcpp::ok()) {
         ros->publish_pose();
         ros->exec_.spin_some();
