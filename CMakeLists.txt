@@ -184,11 +184,11 @@ catkin_package(CATKIN_DEPENDS
 
 include_directories(
         ${catkin_INCLUDE_DIRS}
-        ${OpenVSLAM_SRC_DIR}
+        ${openvslam_INCLUDE_DIRS}
         src)
 
 link_libraries(
         ${catkin_LIBRARIES}
-        ${OpenVSLAM_LIB})
+        ${openvslam_LIBS})
 
 add_subdirectory(src)
