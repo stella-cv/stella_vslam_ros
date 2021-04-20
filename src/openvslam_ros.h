@@ -42,8 +42,8 @@ public:
     std::string odom_frame_, map_frame_, camera_link_;
     std::unique_ptr<tf2_ros::Buffer> tf_;
     std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
-    tf2::Transform map_to_odom_;
     bool publish_tf_;
+    std::mutex camera_link_mutex;
 };
 
 class mono : public system {

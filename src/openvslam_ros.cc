@@ -1,6 +1,8 @@
 #include <openvslam_ros.h>
 
 #include <chrono>
+#include <thread>
+#include <mutex>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -20,6 +22,7 @@ system::system(const std::shared_ptr<openvslam::config>& cfg, const std::string&
 }
 
 void system::publish_pose() {
+    const std::lock_guard<std::mutex> lock(camera_link_mutex);
     // SLAM get the motion matrix publisher
     auto cam_pose_wc = SLAM_.get_map_publisher()->get_current_cam_pose_wc();
 
@@ -57,7 +60,7 @@ void system::publish_pose() {
                                                     tf2_ros::fromMsg(node_->now()), camera_link_);
 
         geometry_msgs::msg::TransformStamped camera_to_map_msg, odom_to_map_msg, map_to_odom_msg;
-        tf2::Stamped<tf2::Transform> odom_to_map_stamped, map_to_odom_stamped;
+        tf2::Stamped<tf2::Transform> odom_to_map_stamped;
 
         // camera_to_map_msg = tf2::toMsg(camera_to_map); - it breaks the execution
         camera_to_map_msg.header.stamp = tf2_ros::toMsg(camera_to_map.stamp_);
@@ -70,21 +73,21 @@ void system::publish_pose() {
         try {
             odom_to_map_msg = tf_->transform(camera_to_map_msg, odom_frame_);
             tf2::fromMsg(odom_to_map_msg, odom_to_map_stamped);
-            map_to_odom_ = tf2::Transform(tf2::Quaternion(odom_to_map_stamped.getRotation()), tf2::Vector3(odom_to_map_stamped.getOrigin())).inverse();
-
-            tf2::Stamped<tf2::Transform> map_to_odom_stamped(map_to_odom_, tf2_ros::fromMsg(node_->now()), map_frame_);
-
-            map_to_odom_broadcaster_->sendTransform(tf2::toMsg(map_to_odom_stamped));
-
+            
+            map_to_odom_msg.transform = tf2::toMsg(tf2::Transform(tf2::Quaternion(odom_to_map_stamped.getRotation()), 
+                                                                                    tf2::Vector3(odom_to_map_stamped.getOrigin())).inverse());
+            map_to_odom_msg.header.frame_id = map_frame_;
+            map_to_odom_msg.child_frame_id = odom_frame_;
+            map_to_odom_msg.header.stamp = node_->now();
+            map_to_odom_broadcaster_->sendTransform(map_to_odom_msg);
         }
-        catch (tf2::TransformException & ex) {
-            RCLCPP_ERROR(node_->get_logger(), "Transform failed: %s", ex.what());
+        catch (tf2::TransformException& ex) {
+           RCLCPP_ERROR(node_->get_logger(), "Transform failed: %s", ex.what());
         }
     }
 }
 
-void system::setParams(){
-    map_to_odom_.setIdentity();
+void system::setParams() {
     odom_frame_ = std::string("odom");
     odom_frame_ = node_->declare_parameter("odom_frame", odom_frame_);
 
@@ -92,7 +95,7 @@ void system::setParams(){
     map_frame_ = node_->declare_parameter("map_frame", map_frame_);
 
     publish_tf_ = true;
-    publish_tf_ = node_->declare_parameter("publish_tf_bool", publish_tf_);
+    publish_tf_ = node_->declare_parameter("publish_tf_", publish_tf_);
 }
 
 mono::mono(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
@@ -101,7 +104,10 @@ mono::mono(const std::shared_ptr<openvslam::config>& cfg, const std::string& voc
         node_.get(), "camera/image_raw", [this](const sensor_msgs::msg::Image::ConstSharedPtr& msg) { callback(msg); }, "raw", custom_qos_);
 }
 void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
-    camera_link_ = msg->header.frame_id;
+    if(camera_link_.empty()){
+        const std::lock_guard<std::mutex> lock(camera_link_mutex);
+        camera_link_ = msg->header.frame_id;
+    }
     const rclcpp::Time tp_1 = node_->now();
     const double timestamp = tp_1.seconds();
 
@@ -126,7 +132,10 @@ stereo::stereo(const std::shared_ptr<openvslam::config>& cfg, const std::string&
 }
 
 void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const sensor_msgs::msg::Image::ConstSharedPtr& right) {
-    camera_link_ = left->header.frame_id;
+    if(camera_link_.empty()){
+        const std::lock_guard<std::mutex> lock(camera_link_mutex);
+        camera_link_ = left->header.frame_id;
+    }
     auto leftcv = cv_bridge::toCvShare(left)->image;
     auto rightcv = cv_bridge::toCvShare(right)->image;
     if (leftcv.empty() || rightcv.empty()) {
@@ -159,7 +168,10 @@ rgbd::rgbd(const std::shared_ptr<openvslam::config>& cfg, const std::string& voc
 }
 
 void rgbd::callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const sensor_msgs::msg::Image::ConstSharedPtr& depth) {
-    camera_link_ = color->header.frame_id;
+    if(camera_link_.empty()){
+        const std::lock_guard<std::mutex> lock(camera_link_mutex);
+        camera_link_ = color->header.frame_id;
+    }
     auto colorcv = cv_bridge::toCvShare(color)->image;
     auto depthcv = cv_bridge::toCvShare(depth)->image;
     if (colorcv.empty() || depthcv.empty()) {
