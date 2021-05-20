@@ -49,6 +49,10 @@ foreach(EXECUTABLE_TARGET IN LISTS EXECUTABLE_TARGETS)
                 ${GPERFTOOLS_LIBRARIES})
     endif()
 
+    # setup yaml-cpp
+    target_link_libraries(${EXECUTABLE_TARGET} PRIVATE
+        yaml-cpp)
+
     # build
     target_include_directories(${EXECUTABLE_TARGET}
                                PRIVATE ${rclcpp_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
@@ -58,4 +62,5 @@ foreach(EXECUTABLE_TARGET IN LISTS EXECUTABLE_TARGETS)
                               PUBLIC rclcpp cv_bridge image_transport message_filters rcutils nav_msgs)
     install(TARGETS ${EXECUTABLE_TARGET}
             DESTINATION lib/${PROJECT_NAME})
+
 endforeach()

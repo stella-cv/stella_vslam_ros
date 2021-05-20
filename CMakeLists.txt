@@ -144,6 +144,9 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 find_package(Eigen3 3.3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
+# yaml-cpp
+find_package(yaml-cpp REQUIRED)
+
 # spdlog
 set(spdlog_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/3rd/spdlog/include)
 include_directories(${spdlog_INCLUDE_DIR})
