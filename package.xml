@@ -20,4 +20,5 @@
     <depend>libgoogle-glog-dev</depend>
     <depend>image_transport</depend>
     <depend>cv_bridge</depend>
+    <depend>yaml-cpp</depend>
 </package>
