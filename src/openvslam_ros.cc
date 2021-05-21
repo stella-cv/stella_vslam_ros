@@ -16,10 +16,10 @@ system::system(const std::shared_ptr<openvslam::config>& cfg, const std::string&
     exec_.add_node(node_);
 }
 
-void system::publish_pose(const Eigen::Matrix4d& cam_pose_cw) {
+void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc) {
     // Extract rotation matrix and translation vector from
-    Eigen::Matrix3d rot = cam_pose_cw.block<3, 3>(0, 0).transpose();
-    Eigen::Vector3d trans = -rot * cam_pose_cw.block<3, 1>(0, 3);
+    Eigen::Matrix3d rot = cam_pose_wc.block<3, 3>(0, 0);
+    Eigen::Vector3d trans = cam_pose_wc.block<3, 1>(0, 3);
     Eigen::Matrix3d cv_to_ros;
     cv_to_ros << 0, 0, 1,
         -1, 0, 0,
@@ -54,7 +54,7 @@ void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
     const double timestamp = tp_1.seconds();
 
     // input the current frame and estimate the camera pose
-    auto cam_pose_cw = SLAM_.feed_monocular_frame(cv_bridge::toCvShare(msg)->image, timestamp, mask_);
+    auto cam_pose_wc = SLAM_.feed_monocular_frame(cv_bridge::toCvShare(msg)->image, timestamp, mask_);
 
     const rclcpp::Time tp_2 = node_->now();
     const double track_time = (tp_2 - tp_1).seconds();
@@ -62,8 +62,8 @@ void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
     //track times in seconds
     track_times_.push_back(track_time);
 
-    if (cam_pose_cw) {
-        publish_pose(*cam_pose_cw);
+    if (cam_pose_wc) {
+        publish_pose(*cam_pose_wc);
     }
 }
 
@@ -92,7 +92,7 @@ void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const
     const double timestamp = tp_1.seconds();
 
     // input the current frame and estimate the camera pose
-    auto cam_pose_cw = SLAM_.feed_stereo_frame(leftcv, rightcv, timestamp, mask_);
+    auto cam_pose_wc = SLAM_.feed_stereo_frame(leftcv, rightcv, timestamp, mask_);
 
     const rclcpp::Time tp_2 = node_->now();
     const double track_time = (tp_2 - tp_1).seconds();
@@ -100,8 +100,8 @@ void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const
     //track times in seconds
     track_times_.push_back(track_time);
 
-    if (cam_pose_cw) {
-        publish_pose(*cam_pose_cw);
+    if (cam_pose_wc) {
+        publish_pose(*cam_pose_wc);
     }
 }
 
@@ -124,7 +124,7 @@ void rgbd::callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const 
     const double timestamp = tp_1.seconds();
 
     // input the current frame and estimate the camera pose
-    auto cam_pose_cw = SLAM_.feed_RGBD_frame(colorcv, depthcv, timestamp, mask_);
+    auto cam_pose_wc = SLAM_.feed_RGBD_frame(colorcv, depthcv, timestamp, mask_);
 
     const rclcpp::Time tp_2 = node_->now();
     const double track_time = (tp_2 - tp_1).seconds();
@@ -132,8 +132,8 @@ void rgbd::callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const 
     // track time in seconds
     track_times_.push_back(track_time);
 
-    if (cam_pose_cw) {
-        publish_pose(*cam_pose_cw);
+    if (cam_pose_wc) {
+        publish_pose(*cam_pose_wc);
     }
 }
 
