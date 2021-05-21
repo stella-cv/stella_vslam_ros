@@ -54,7 +54,7 @@ void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
     const double timestamp = tp_1.seconds();
 
     // input the current frame and estimate the camera pose
-    Eigen::Matrix4d cam_pose_cw = SLAM_.feed_monocular_frame(cv_bridge::toCvShare(msg)->image, timestamp, mask_);
+    auto cam_pose_cw = SLAM_.feed_monocular_frame(cv_bridge::toCvShare(msg)->image, timestamp, mask_);
 
     const rclcpp::Time tp_2 = node_->now();
     const double track_time = (tp_2 - tp_1).seconds();
@@ -62,7 +62,9 @@ void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
     //track times in seconds
     track_times_.push_back(track_time);
 
-    publish_pose(cam_pose_cw);
+    if (cam_pose_cw) {
+        publish_pose(*cam_pose_cw);
+    }
 }
 
 stereo::stereo(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path,
@@ -90,7 +92,7 @@ void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const
     const double timestamp = tp_1.seconds();
 
     // input the current frame and estimate the camera pose
-    Eigen::Matrix4d cam_pose_cw = SLAM_.feed_stereo_frame(leftcv, rightcv, timestamp, mask_);
+    auto cam_pose_cw = SLAM_.feed_stereo_frame(leftcv, rightcv, timestamp, mask_);
 
     const rclcpp::Time tp_2 = node_->now();
     const double track_time = (tp_2 - tp_1).seconds();
@@ -98,7 +100,9 @@ void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const
     //track times in seconds
     track_times_.push_back(track_time);
 
-    publish_pose(cam_pose_cw);
+    if (cam_pose_cw) {
+        publish_pose(*cam_pose_cw);
+    }
 }
 
 rgbd::rgbd(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
@@ -120,7 +124,7 @@ void rgbd::callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const 
     const double timestamp = tp_1.seconds();
 
     // input the current frame and estimate the camera pose
-    Eigen::Matrix4d cam_pose_cw = SLAM_.feed_RGBD_frame(colorcv, depthcv, timestamp, mask_);
+    auto cam_pose_cw = SLAM_.feed_RGBD_frame(colorcv, depthcv, timestamp, mask_);
 
     const rclcpp::Time tp_2 = node_->now();
     const double track_time = (tp_2 - tp_1).seconds();
@@ -128,7 +132,9 @@ void rgbd::callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const 
     // track time in seconds
     track_times_.push_back(track_time);
 
-    publish_pose(cam_pose_cw);
+    if (cam_pose_cw) {
+        publish_pose(*cam_pose_cw);
+    }
 }
 
 } // namespace openvslam_ros
