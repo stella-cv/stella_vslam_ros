@@ -13,10 +13,10 @@ system::system(const std::shared_ptr<openvslam::config>& cfg, const std::string&
       mask_(mask_img_path.empty() ? cv::Mat{} : cv::imread(mask_img_path, cv::IMREAD_GRAYSCALE)),
       pose_pub_(private_nh_.advertise<nav_msgs::Odometry>("camera_pose", 1)) {}
 
-void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc) {
+void system::publish_pose(const Eigen::Matrix4d& cam_pose_cw) {
     // Extract rotation matrix and translation vector from
-    Eigen::Matrix3d rot = cam_pose_wc.block<3, 3>(0, 0);
-    Eigen::Vector3d trans = cam_pose_wc.block<3, 1>(0, 3);
+    Eigen::Matrix3d rot = cam_pose_cw.block<3, 3>(0, 0).transpose();
+    Eigen::Vector3d trans = -rot * cam_pose_cw.block<3, 1>(0, 3);
     Eigen::Matrix3d cv_to_ros;
     cv_to_ros << 0, 0, 1,
         -1, 0, 0,
@@ -50,14 +50,14 @@ void mono::callback(const sensor_msgs::ImageConstPtr& msg) {
     const auto timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(tp_1 - tp_0_).count();
 
     // input the current frame and estimate the camera pose
-    Eigen::Matrix4d cam_pose_wc = SLAM_.feed_monocular_frame(cv_bridge::toCvShare(msg)->image, timestamp, mask_);
+    Eigen::Matrix4d cam_pose_cw = SLAM_.feed_monocular_frame(cv_bridge::toCvShare(msg)->image, timestamp, mask_);
 
     const auto tp_2 = std::chrono::steady_clock::now();
 
     const auto track_time = std::chrono::duration_cast<std::chrono::duration<double>>(tp_2 - tp_1).count();
     track_times_.push_back(track_time);
 
-    publish_pose(cam_pose_wc);
+    publish_pose(cam_pose_cw);
 }
 
 stereo::stereo(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path,
@@ -85,14 +85,14 @@ void stereo::callback(const sensor_msgs::ImageConstPtr& left, const sensor_msgs:
     const auto timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(tp_1 - tp_0_).count();
 
     // input the current frame and estimate the camera pose
-    Eigen::Matrix4d cam_pose_wc = SLAM_.feed_stereo_frame(leftcv, rightcv, timestamp, mask_);
+    Eigen::Matrix4d cam_pose_cw = SLAM_.feed_stereo_frame(leftcv, rightcv, timestamp, mask_);
 
     const auto tp_2 = std::chrono::steady_clock::now();
 
     const auto track_time = std::chrono::duration_cast<std::chrono::duration<double>>(tp_2 - tp_1).count();
     track_times_.push_back(track_time);
 
-    publish_pose(cam_pose_wc);
+    publish_pose(cam_pose_cw);
 }
 
 rgbd::rgbd(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
@@ -114,13 +114,13 @@ void rgbd::callback(const sensor_msgs::ImageConstPtr& color, const sensor_msgs::
     const auto timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(tp_1 - tp_0_).count();
 
     // input the current frame and estimate the camera pose
-    Eigen::Matrix4d cam_pose_wc = SLAM_.feed_RGBD_frame(colorcv, depthcv, timestamp, mask_);
+    Eigen::Matrix4d cam_pose_cw = SLAM_.feed_RGBD_frame(colorcv, depthcv, timestamp, mask_);
 
     const auto tp_2 = std::chrono::steady_clock::now();
 
     const auto track_time = std::chrono::duration_cast<std::chrono::duration<double>>(tp_2 - tp_1).count();
     track_times_.push_back(track_time);
 
-    publish_pose(cam_pose_wc);
+    publish_pose(cam_pose_cw);
 }
 } // namespace openvslam_ros
