@@ -22,7 +22,7 @@ namespace openvslam_ros {
 class system {
 public:
     system(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path);
-    void publish_pose();
+    void publish_pose(const Eigen::Matrix4d& cam_pose_wc);
     openvslam::system SLAM_;
     std::shared_ptr<openvslam::config> cfg_;
     std::shared_ptr<rclcpp::Node> node_;
