@@ -87,11 +87,10 @@ void localization(const std::shared_ptr<openvslam::config>& cfg, const std::stri
     });
 #endif
 
-    ros::Rate pub_rate(10);
+    ros::Rate rate(50);
     while (ros::ok()) {
-        ros->publish_pose();
-        pub_rate.sleep();
         ros::spinOnce();
+        rate.sleep();
     }
 
     // automatically close the viewer
