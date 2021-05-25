@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  - push
+  - pull_request
+  - workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: DoozyX/clang-format-lint-action@v0.12
+        with:
+          source: '.'
+          exclude: './3rd'
+          extensions: 'h,cc'
+          clangFormatVersion: 6
+          style: file
+          inplace: True
+      - uses: EndBug/add-and-commit@v7
+        with:
+          default_author: github_actions
