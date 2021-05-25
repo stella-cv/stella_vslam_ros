@@ -14,7 +14,7 @@ system::system(const std::shared_ptr<openvslam::config>& cfg, const std::string&
       pose_pub_(node_->create_publisher<nav_msgs::msg::Odometry>("~/camera_pose", 1)),
       map_to_odom_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>(node_)),
       tf_(std::make_unique<tf2_ros::Buffer>(node_->get_clock())),
-      transform_listener_(std::make_shared<tf2_ros::TransformListener>(*tf_)){
+      transform_listener_(std::make_shared<tf2_ros::TransformListener>(*tf_)) {
     custom_qos_.depth = 1;
     exec_.add_node(node_);
 }
@@ -46,13 +46,13 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc) {
     pose_msg.pose.pose.position.y = trans(1);
     pose_msg.pose.pose.position.z = trans(2);
     pose_pub_->publish(pose_msg);
-    
 
     // Send map->odom transform. Set publish_tf_ to false with not using TF
-    if(publish_tf_){
-        tf2::Stamped<tf2::Transform> camera_to_map(tf2::Transform(tf2::Quaternion(quat.x(), quat.y(), quat.z(), quat.w()), 
-                                                    tf2::Vector3(trans(0), trans(1), trans(2))).inverse(),
-                                                    tf2_ros::fromMsg(node_->now()), camera_link_);
+    if (publish_tf_) {
+        tf2::Stamped<tf2::Transform> camera_to_map(tf2::Transform(tf2::Quaternion(quat.x(), quat.y(), quat.z(), quat.w()),
+                                                                  tf2::Vector3(trans(0), trans(1), trans(2)))
+                                                       .inverse(),
+                                                   tf2_ros::fromMsg(node_->now()), camera_link_);
 
         geometry_msgs::msg::TransformStamped camera_to_map_msg, odom_to_map_msg, map_to_odom_msg;
         tf2::Stamped<tf2::Transform> odom_to_map_stamped;
@@ -64,23 +64,24 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc) {
         camera_to_map_msg.transform.translation.y = camera_to_map.getOrigin().getY();
         camera_to_map_msg.transform.translation.z = camera_to_map.getOrigin().getZ();
         camera_to_map_msg.transform.rotation = tf2::toMsg(camera_to_map.getRotation());
-            
+
         try {
             odom_to_map_msg = tf_->transform(camera_to_map_msg, odom_frame_);
             tf2::fromMsg(odom_to_map_msg, odom_to_map_stamped);
-                
-            map_to_odom_msg.transform = tf2::toMsg(tf2::Transform(tf2::Quaternion(odom_to_map_stamped.getRotation()), 
-                                                                                    tf2::Vector3(odom_to_map_stamped.getOrigin())).inverse());
+
+            map_to_odom_msg.transform = tf2::toMsg(tf2::Transform(tf2::Quaternion(odom_to_map_stamped.getRotation()),
+                                                                  tf2::Vector3(odom_to_map_stamped.getOrigin()))
+                                                       .inverse());
             map_to_odom_msg.header.frame_id = map_frame_;
             map_to_odom_msg.child_frame_id = odom_frame_;
             map_to_odom_msg.header.stamp = node_->now();
             map_to_odom_broadcaster_->sendTransform(map_to_odom_msg);
         }
         catch (tf2::TransformException& ex) {
-        RCLCPP_ERROR(node_->get_logger(), "Transform failed: %s", ex.what());
+            RCLCPP_ERROR(node_->get_logger(), "Transform failed: %s", ex.what());
         }
     }
-}   
+}
 
 void system::setParams() {
     odom_frame_ = std::string("odom");
@@ -99,7 +100,7 @@ mono::mono(const std::shared_ptr<openvslam::config>& cfg, const std::string& voc
         node_.get(), "camera/image_raw", [this](const sensor_msgs::msg::Image::ConstSharedPtr& msg) { callback(msg); }, "raw", custom_qos_);
 }
 void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
-    if(camera_link_.empty()){
+    if (camera_link_.empty()) {
         const std::lock_guard<std::mutex> lock(camera_link_mutex);
         camera_link_ = msg->header.frame_id;
     }
@@ -131,7 +132,7 @@ stereo::stereo(const std::shared_ptr<openvslam::config>& cfg, const std::string&
 }
 
 void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const sensor_msgs::msg::Image::ConstSharedPtr& right) {
-    if(camera_link_.empty()){
+    if (camera_link_.empty()) {
         const std::lock_guard<std::mutex> lock(camera_link_mutex);
         camera_link_ = left->header.frame_id;
     }
@@ -171,7 +172,7 @@ rgbd::rgbd(const std::shared_ptr<openvslam::config>& cfg, const std::string& voc
 }
 
 void rgbd::callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const sensor_msgs::msg::Image::ConstSharedPtr& depth) {
-    if(camera_link_.empty()){
+    if (camera_link_.empty()) {
         const std::lock_guard<std::mutex> lock(camera_link_mutex);
         camera_link_ = color->header.frame_id;
     }
