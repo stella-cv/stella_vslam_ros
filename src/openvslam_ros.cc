@@ -57,13 +57,7 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc) {
         geometry_msgs::msg::TransformStamped camera_to_map_msg, odom_to_map_msg, map_to_odom_msg;
         tf2::Stamped<tf2::Transform> odom_to_map_stamped;
 
-        // camera_to_map_msg = tf2::toMsg(camera_to_map); - it breaks the execution
-        camera_to_map_msg.header.stamp = tf2_ros::toMsg(camera_to_map.stamp_);
-        camera_to_map_msg.header.frame_id = camera_to_map.frame_id_;
-        camera_to_map_msg.transform.translation.x = camera_to_map.getOrigin().getX();
-        camera_to_map_msg.transform.translation.y = camera_to_map.getOrigin().getY();
-        camera_to_map_msg.transform.translation.z = camera_to_map.getOrigin().getZ();
-        camera_to_map_msg.transform.rotation = tf2::toMsg(camera_to_map.getRotation());
+        camera_to_map_msg = tf2::toMsg(camera_to_map);
 
         try {
             odom_to_map_msg = tf_->transform(camera_to_map_msg, odom_frame_);
