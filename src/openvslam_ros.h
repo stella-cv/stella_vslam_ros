@@ -10,16 +10,12 @@
 #include <image_transport/subscriber_filter.hpp>
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
-#include <message_filters/sync_policies/approximate_time.h>
 #include <message_filters/time_synchronizer.h>
 #include <cv_bridge/cv_bridge.h>
 #include <nav_msgs/msg/odometry.hpp>
 
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/transform_broadcaster.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-
-#include <geometry_msgs/msg/transform_stamped.h>
 
 #include <opencv2/core/core.hpp>
 #include <sensor_msgs/msg/image.hpp>
@@ -28,7 +24,7 @@ namespace openvslam_ros {
 class system {
 public:
     system(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path);
-    void publish_pose(const Eigen::Matrix4d& cam_pose_wc);
+    void publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time& stamp);
     void setParams();
     openvslam::system SLAM_;
     std::shared_ptr<openvslam::config> cfg_;
@@ -43,7 +39,6 @@ public:
     std::unique_ptr<tf2_ros::Buffer> tf_;
     std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
     bool publish_tf_;
-    std::mutex camera_link_mutex;
 };
 
 class mono : public system {
