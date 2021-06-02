@@ -52,7 +52,8 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time
             Eigen::Affine3d camera_to_odom_affine = tf2::transformToEigen(camera_to_odom.transform);
 
             auto map_to_odom_msg = tf2::eigenToTransform(map_to_camera_affine * camera_to_odom_affine);
-            map_to_odom_msg.header.stamp = stamp;
+            tf2::TimePoint transform_timestamp = tf2_ros::fromMsg(stamp) + tf2::durationFromSec(transform_tolerance_);
+            map_to_odom_msg.header.stamp = tf2_ros::toMsg(transform_timestamp);
             map_to_odom_msg.header.frame_id = map_frame_;
             map_to_odom_msg.child_frame_id = odom_frame_;
             map_to_odom_broadcaster_->sendTransform(map_to_odom_msg);
@@ -101,8 +102,7 @@ void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
     track_times_.push_back(track_time);
 
     if (cam_pose_wc) {
-        tf2::TimePoint transform_timestamp = tf2_ros::fromMsg(msg->header.stamp) + tf2::durationFromSec(transform_tolerance_);
-        publish_pose(*cam_pose_wc, tf2_ros::toMsg(transform_timestamp));
+        publish_pose(*cam_pose_wc, msg->header.stamp);
     }
 }
 
@@ -143,8 +143,7 @@ void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const
     track_times_.push_back(track_time);
 
     if (cam_pose_wc) {
-        tf2::TimePoint transform_timestamp = tf2_ros::fromMsg(left->header.stamp) + tf2::durationFromSec(transform_tolerance_);
-        publish_pose(*cam_pose_wc, tf2_ros::toMsg(transform_timestamp));
+        publish_pose(*cam_pose_wc, left->header.stamp);
     }
 }
 
@@ -179,8 +178,7 @@ void rgbd::callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const 
     track_times_.push_back(track_time);
 
     if (cam_pose_wc) {
-        tf2::TimePoint transform_timestamp = tf2_ros::fromMsg(color->header.stamp) + tf2::durationFromSec(transform_tolerance_);
-        publish_pose(*cam_pose_wc, tf2_ros::toMsg(transform_timestamp));
+        publish_pose(*cam_pose_wc, color->header.stamp);
     }
 }
 
