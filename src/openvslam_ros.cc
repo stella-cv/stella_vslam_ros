@@ -43,7 +43,7 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time
     pose_msg.pose.pose = tf2::toMsg(map_to_camera_affine);
     pose_pub_->publish(pose_msg);
 
-    // Send map->odom transform. Set publish_tf_ to false with not using TF
+    // Send map->odom transform. Set publish_tf to false if not using TF
     if (publish_tf_) {
         try {
             auto camera_to_odom = tf_->lookupTransform(
@@ -52,7 +52,8 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time
             Eigen::Affine3d camera_to_odom_affine = tf2::transformToEigen(camera_to_odom.transform);
 
             auto map_to_odom_msg = tf2::eigenToTransform(map_to_camera_affine * camera_to_odom_affine);
-            map_to_odom_msg.header.stamp = stamp;
+            tf2::TimePoint transform_timestamp = tf2_ros::fromMsg(stamp) + tf2::durationFromSec(transform_tolerance_);
+            map_to_odom_msg.header.stamp = tf2_ros::toMsg(transform_timestamp);
             map_to_odom_msg.header.frame_id = map_frame_;
             map_to_odom_msg.child_frame_id = odom_frame_;
             map_to_odom_broadcaster_->sendTransform(map_to_odom_msg);
@@ -70,8 +71,13 @@ void system::setParams() {
     map_frame_ = std::string("map");
     map_frame_ = node_->declare_parameter("map_frame", map_frame_);
 
+    // Set publish_tf to false if not using TF
     publish_tf_ = true;
-    publish_tf_ = node_->declare_parameter("publish_tf_", publish_tf_);
+    publish_tf_ = node_->declare_parameter("publish_tf", publish_tf_);
+
+    // Publish pose's timestamp in the future
+    transform_tolerance_ = 0.5;
+    transform_tolerance_ = node_->declare_parameter("transform_tolerance", transform_tolerance_);
 }
 
 mono::mono(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
