@@ -1,5 +1,5 @@
 box:
-  id: ghcr.io/ymd-stella/openvslam-community/openvslam-ros2:foxy
+  id: ghcr.io/ymd-stella/openvslam-community/openvslam-ros2:galactic
 
 no-response-timeout: 20
 
@@ -73,7 +73,7 @@ build:
         pkill -SIGINT -f static_transform_publisher
 
 rosdep:
-  box: ghcr.io/ymd-stella/openvslam-community/ros:foxy-ros-base
+  box: ghcr.io/ymd-stella/openvslam-community/ros:galactic-ros-base
   steps:
     - script:
       name: build ros2 packages
