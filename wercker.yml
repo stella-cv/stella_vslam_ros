@@ -1,5 +1,5 @@
 box:
-  id: ghcr.io/ymd-stella/openvslam-community/openvslam-ros2:latest
+  id: ghcr.io/ymd-stella/openvslam-community/openvslam-ros2:foxy
 
 no-response-timeout: 20
 
@@ -72,7 +72,7 @@ build:
         pkill -SIGINT -f run_localization
         pkill -SIGINT -f static_transform_publisher
 
-rosdep_foxy:
+rosdep:
   box: ghcr.io/ymd-stella/openvslam-community/ros:foxy-ros-base
   steps:
     - script:
