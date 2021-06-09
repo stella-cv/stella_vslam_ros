@@ -1,4 +1,4 @@
-FROM ros:foxy
+FROM ros:galactic
 ENV DEBIAN_FRONTEND noninteractive
 
 # install dependencies via apt
@@ -121,12 +121,17 @@ RUN set -x && \
 RUN set -x && \
   git clone --depth 1 https://github.com/OpenVSLAM-Community/openvslam.git && \
   cd openvslam && \
+  git submodule update -i --recursive && \
   mkdir -p build && \
   cd build && \
   CMAKE_PREFIX_PATH=/opt/ros/${ROS_DISTRO}/lib/cmake cmake \
+    -DUSE_PANGOLIN_VIEWER=ON \
+    -DUSE_SOCKET_PUBLISHER=OFF \
+    -DINSTALL_PANGOLIN_VIEWER=ON \
     -DUSE_STACK_TRACE_LOGGER=ON \
     .. && \
   make -j${NUM_THREADS} && \
+  make install && \
   rm -rf CMakeCache.txt CMakeFiles Makefile cmake_install.cmake example src && \
   chmod -R 777 ./*
 
@@ -145,7 +150,8 @@ RUN set -x && \
   apt-get autoremove -y -qq && \
   rm -rf /var/lib/apt/lists/*
 
-WORKDIR /openvslam/ros/2
+WORKDIR /ros2_ws
+COPY . /ros2_ws
 
 RUN set -x && \
   : "build ROS2 packages" && \
@@ -158,7 +164,7 @@ RUN set -x && \
     -DBOW_FRAMEWORK=DBoW2"
 
 RUN set -x && \
-  sh -c "echo '#'\!'/bin/bash\nset -e\nsource /opt/ros/${ROS_DISTRO}/setup.bash\nsource /openvslam/ros/2/install/setup.bash\nexec \"\$@\"' > /ros_entrypoint.sh" && \
+  sh -c "echo '#'\!'/bin/bash\nset -e\nsource /opt/ros/${ROS_DISTRO}/setup.bash\nsource /ros2_ws/install/setup.bash\nexec \"\$@\"' > /ros_entrypoint.sh" && \
   chmod u+x /ros_entrypoint.sh
 
 ENTRYPOINT ["/ros_entrypoint.sh"]
