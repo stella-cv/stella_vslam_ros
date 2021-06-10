@@ -151,7 +151,7 @@ RUN set -x && \
   rm -rf /var/lib/apt/lists/*
 
 WORKDIR /ros2_ws
-COPY . /ros2_ws
+COPY . /ros2_ws/src/openvslam_ros
 
 RUN set -x && \
   : "build ROS2 packages" && \
