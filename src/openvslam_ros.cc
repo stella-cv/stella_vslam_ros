@@ -32,8 +32,8 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time
         -1, 0, 0,
         0, -1, 0;
 
-    // Transform from CV coordinate system to ROS coordinate system on camera coordinates
-    map_to_camera_affine.prerotate(cv_to_ros).rotate(cv_to_ros.transpose());
+    // Transform map frame from CV coordinate system to ROS coordinate system
+    map_to_camera_affine.prerotate(cv_to_ros);
 
     // Create odometry message and update it with current camera pose
     nav_msgs::msg::Odometry pose_msg;
