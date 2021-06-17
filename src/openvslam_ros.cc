@@ -27,13 +27,13 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time
     Eigen::Matrix3d rot(cam_pose_wc.block<3, 3>(0, 0));
     Eigen::Translation3d trans(cam_pose_wc.block<3, 1>(0, 3));
     Eigen::Affine3d map_to_camera_affine(trans * rot);
-    Eigen::Matrix3d cv_to_ros;
-    cv_to_ros << 0, 0, 1,
+    Eigen::Matrix3d rot_ros_to_cv_map_frame;
+    rot_ros_to_cv_map_frame << 0, 0, 1,
         -1, 0, 0,
         0, -1, 0;
 
-    // Transform from CV coordinate system to ROS coordinate system on camera coordinates
-    map_to_camera_affine.prerotate(cv_to_ros).rotate(cv_to_ros.transpose());
+    // Transform map frame from CV coordinate system to ROS coordinate system
+    map_to_camera_affine.prerotate(rot_ros_to_cv_map_frame);
 
     // Create odometry message and update it with current camera pose
     nav_msgs::msg::Odometry pose_msg;
