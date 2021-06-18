@@ -20,6 +20,10 @@ system::system(const std::shared_ptr<openvslam::config>& cfg, const std::string&
       transform_listener_(std::make_shared<tf2_ros::TransformListener>(*tf_)) {
     custom_qos_.depth = 1;
     exec_.add_node(node_);
+    init_pose_sub_ = node_->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
+        "/initialpose", 1,
+        std::bind(&system::init_pose_callback,
+        this, std::placeholders::_1));
 }
 
 void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time& stamp) {
@@ -78,6 +82,46 @@ void system::setParams() {
     // Publish pose's timestamp in the future
     transform_tolerance_ = 0.5;
     transform_tolerance_ = node_->declare_parameter("transform_tolerance", transform_tolerance_);
+}
+
+void system::init_pose_callback(
+    const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
+{
+    Eigen::Matrix4d cam_pose_ros(Eigen::Matrix4d::Identity());
+    Eigen::Vector3d pose_v(
+        msg->pose.pose.position.x,
+        msg->pose.pose.position.y,
+        msg->pose.pose.position.z);
+    cam_pose_ros.block<3, 1>(0, 3) = pose_v;
+
+    Eigen::Quaterniond rot_q(
+        msg->pose.pose.orientation.w,
+        msg->pose.pose.orientation.x,
+        msg->pose.pose.orientation.y,
+        msg->pose.pose.orientation.z);
+    Eigen::Matrix3d rot_m = rot_q.toRotationMatrix();
+    cam_pose_ros.block<3, 3>(0, 0) = rot_m;
+
+    Eigen::Matrix4d rot_ros_to_cv_map_frame;
+    rot_ros_to_cv_map_frame <<
+        0, 0, 1, 0,
+        -1, 0, 0, 0,
+        0, -1, 0, 0,
+        0, 0, 0, 1;
+
+    // Transforming initial pose from ROS coordinate system to CV coordinate system as follows:
+    // T(map, pose_cv) = T(map, pose) * T(pose, pose_cv)
+    // T(map, pose_cv) = T(map, map_cv) * T(cv, pose_cv)
+    // where T(pose, pose_cv) == T(map, map_cv)
+    // ||
+    // \/
+    // T(cv, pose_cv) = T(map, map_cv).inv * T(map, pose) * T(map, map_cv)
+    Eigen::Matrix4d cam_pose_cv =
+        rot_ros_to_cv_map_frame.transpose() * cam_pose_ros * rot_ros_to_cv_map_frame;
+
+    if (!SLAM_.update_pose(cam_pose_cv)) {
+        RCLCPP_ERROR(node_->get_logger(), "Can not set initial pose");
+    }
 }
 
 mono::mono(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
