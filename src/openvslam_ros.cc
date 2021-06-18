@@ -23,7 +23,7 @@ system::system(const std::shared_ptr<openvslam::config>& cfg, const std::string&
     init_pose_sub_ = node_->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
         "/initialpose", 1,
         std::bind(&system::init_pose_callback,
-        this, std::placeholders::_1));
+                  this, std::placeholders::_1));
 }
 
 void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time& stamp) {
@@ -85,8 +85,7 @@ void system::setParams() {
 }
 
 void system::init_pose_callback(
-    const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
-{
+    const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg) {
     Eigen::Matrix4d cam_pose_ros(Eigen::Matrix4d::Identity());
     Eigen::Vector3d pose_v(
         msg->pose.pose.position.x,
@@ -103,8 +102,7 @@ void system::init_pose_callback(
     cam_pose_ros.block<3, 3>(0, 0) = rot_m;
 
     Eigen::Matrix4d rot_ros_to_cv_map_frame;
-    rot_ros_to_cv_map_frame <<
-        0, 0, 1, 0,
+    rot_ros_to_cv_map_frame << 0, 0, 1, 0,
         -1, 0, 0, 0,
         0, -1, 0, 0,
         0, 0, 0, 1;
@@ -116,8 +114,7 @@ void system::init_pose_callback(
     // ||
     // \/
     // T(cv, pose_cv) = T(map, map_cv).inv * T(map, pose) * T(map, map_cv)
-    Eigen::Matrix4d cam_pose_cv =
-        rot_ros_to_cv_map_frame.transpose() * cam_pose_ros * rot_ros_to_cv_map_frame;
+    Eigen::Matrix4d cam_pose_cv = rot_ros_to_cv_map_frame.transpose() * cam_pose_ros * rot_ros_to_cv_map_frame;
 
     if (!SLAM_.update_pose(cam_pose_cv)) {
         RCLCPP_ERROR(node_->get_logger(), "Can not set initial pose");
