@@ -109,11 +109,11 @@ void system::init_pose_callback(
 
     // Transforming initial pose from ROS coordinate system to CV coordinate system as follows:
     // T(map, pose_cv) = T(map, pose) * T(pose, pose_cv)
-    // T(map, pose_cv) = T(map, map_cv) * T(cv, pose_cv)
+    // T(map, pose_cv) = T(map, map_cv) * T(map_cv, pose_cv)
     // where T(pose, pose_cv) == T(map, map_cv)
     // ||
     // \/
-    // T(cv, pose_cv) = T(map, map_cv).inv * T(map, pose) * T(map, map_cv)
+    // T(map_cv, pose_cv) = T(map, map_cv).inv * T(map, pose) * T(map, map_cv)
     Eigen::Matrix4d cam_pose_cv = rot_ros_to_cv_map_frame.transpose() * cam_pose_ros * rot_ros_to_cv_map_frame;
 
     if (!SLAM_.update_pose(cam_pose_cv)) {
