@@ -75,6 +75,9 @@ void system::setParams() {
     map_frame_ = std::string("map");
     map_frame_ = node_->declare_parameter("map_frame", map_frame_);
 
+    base_link_ = std::string("base_footprint");
+    base_link_ = node_->declare_parameter("base_link", base_link_);
+
     // Set publish_tf to false if not using TF
     publish_tf_ = true;
     publish_tf_ = node_->declare_parameter("publish_tf", publish_tf_);
@@ -86,35 +89,68 @@ void system::setParams() {
 
 void system::init_pose_callback(
     const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg) {
-    Eigen::Matrix4d cam_pose_ros(Eigen::Matrix4d::Identity());
-    Eigen::Vector3d pose_v(
+    if (camera_link_.empty()) {
+        RCLCPP_ERROR(node_->get_logger(),
+                     "Camera link is not set: no images were received yet");
+        return;
+    }
+
+    Eigen::Translation3d trans(
         msg->pose.pose.position.x,
         msg->pose.pose.position.y,
         msg->pose.pose.position.z);
-    cam_pose_ros.block<3, 1>(0, 3) = pose_v;
-
     Eigen::Quaterniond rot_q(
         msg->pose.pose.orientation.w,
         msg->pose.pose.orientation.x,
         msg->pose.pose.orientation.y,
         msg->pose.pose.orientation.z);
-    Eigen::Matrix3d rot_m = rot_q.toRotationMatrix();
-    cam_pose_ros.block<3, 3>(0, 0) = rot_m;
+    Eigen::Affine3d initialpose_affine(trans * rot_q);
 
-    Eigen::Matrix4d rot_ros_to_cv_map_frame;
-    rot_ros_to_cv_map_frame << 0, 0, 1, 0,
-        -1, 0, 0, 0,
-        0, -1, 0, 0,
-        0, 0, 0, 1;
+    Eigen::Matrix3d rot_cv_to_ros_map_frame;
+    rot_cv_to_ros_map_frame << 0, -1, 0,
+        0, 0, -1,
+        1, 0, 0;
 
-    // Transforming initial pose from ROS coordinate system to CV coordinate system as follows:
-    // T(map, pose_cv) = T(map, pose) * T(pose, pose_cv)
-    // T(map, pose_cv) = T(map, map_cv) * T(map_cv, pose_cv)
-    // where T(pose, pose_cv) == T(map, map_cv)
-    // ||
-    // \/
-    // T(map_cv, pose_cv) = T(map, map_cv).inv * T(map, pose) * T(map, map_cv)
-    Eigen::Matrix4d cam_pose_cv = rot_ros_to_cv_map_frame.transpose() * cam_pose_ros * rot_ros_to_cv_map_frame;
+    Eigen::Affine3d map_to_initialpose_frame_affine;
+    if (msg->header.frame_id == map_frame_) {
+        map_to_initialpose_frame_affine = Eigen::Affine3d::Identity();
+    }
+    else {
+        try {
+            auto map_to_initialpose_frame = tf_->lookupTransform(
+                map_frame_, msg->header.frame_id, tf2_ros::fromMsg(msg->header.stamp),
+                tf2::durationFromSec(0.0));
+            map_to_initialpose_frame_affine = tf2::transformToEigen(
+                map_to_initialpose_frame.transform);
+        }
+        catch (tf2::TransformException& ex) {
+            RCLCPP_ERROR(node_->get_logger(), "Transform failed: %s", ex.what());
+            return;
+        }
+    }
+
+    Eigen::Affine3d base_link_to_camera_affine;
+    try {
+        auto base_link_to_camera = tf_->lookupTransform(
+            base_link_, camera_link_, tf2_ros::fromMsg(msg->header.stamp),
+            tf2::durationFromSec(0.0));
+        base_link_to_camera_affine = tf2::transformToEigen(base_link_to_camera.transform);
+    }
+    catch (tf2::TransformException& ex) {
+        RCLCPP_ERROR(node_->get_logger(), "Transform failed: %s", ex.what());
+        return;
+    }
+
+    // Target transform is map_cv -> camera_link and known parameters are following:
+    //   rot_cv_to_ros_map_frame: T(map_cv -> map)
+    //   map_to_initialpose_frame_affine: T(map -> `msg->header.frame_id`)
+    //   initialpose_affine: T(`msg->header.frame_id` -> base_link)
+    //   base_link_to_camera_affine: T(base_link -> camera_link)
+    // The flow of the transformation is as follows:
+    //   map_cv -> map -> `msg->header.frame_id` -> base_link -> camera_link
+    Eigen::Matrix4d cam_pose_cv = (rot_cv_to_ros_map_frame * map_to_initialpose_frame_affine
+                                   * initialpose_affine * base_link_to_camera_affine)
+                                      .matrix();
 
     if (!SLAM_.update_pose(cam_pose_cv)) {
         RCLCPP_ERROR(node_->get_logger(), "Can not set initial pose");
