@@ -164,6 +164,7 @@ void rgbd::callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const 
     if (colorcv.empty() || depthcv.empty()) {
         return;
     }
+    cv::patchNaNs(depthcv);
 
     const rclcpp::Time tp_1 = node_->now();
     const double timestamp = tp_1.seconds();
