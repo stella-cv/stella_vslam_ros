@@ -112,21 +112,16 @@ void system::init_pose_callback(
         1, 0, 0;
 
     Eigen::Affine3d map_to_initialpose_frame_affine;
-    if (msg->header.frame_id == map_frame_) {
-        map_to_initialpose_frame_affine = Eigen::Affine3d::Identity();
+    try {
+        auto map_to_initialpose_frame = tf_->lookupTransform(
+            map_frame_, msg->header.frame_id, tf2_ros::fromMsg(msg->header.stamp),
+            tf2::durationFromSec(0.0));
+        map_to_initialpose_frame_affine = tf2::transformToEigen(
+            map_to_initialpose_frame.transform);
     }
-    else {
-        try {
-            auto map_to_initialpose_frame = tf_->lookupTransform(
-                map_frame_, msg->header.frame_id, tf2_ros::fromMsg(msg->header.stamp),
-                tf2::durationFromSec(0.0));
-            map_to_initialpose_frame_affine = tf2::transformToEigen(
-                map_to_initialpose_frame.transform);
-        }
-        catch (tf2::TransformException& ex) {
-            RCLCPP_ERROR(node_->get_logger(), "Transform failed: %s", ex.what());
-            return;
-        }
+    catch (tf2::TransformException& ex) {
+        RCLCPP_ERROR(node_->get_logger(), "Transform failed: %s", ex.what());
+        return;
     }
 
     Eigen::Affine3d base_link_to_camera_affine;
