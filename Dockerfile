@@ -118,7 +118,6 @@ RUN set -x && \
   cd openvslam && \
   mkdir -p build && \
   git submodule update -i --recursive && \
-  ls -la /tmp/openvslam/3rd/FBoW/ && \
   cd build && \
   CMAKE_PREFIX_PATH=/opt/ros/${ROS_DISTRO}/lib/cmake cmake \
     -DUSE_PANGOLIN_VIEWER=ON \
