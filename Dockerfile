@@ -117,13 +117,21 @@ RUN set -x && \
   git clone --depth 1 https://github.com/OpenVSLAM-Community/openvslam.git && \
   cd openvslam && \
   mkdir -p build && \
+  git submodule update -i --recursive && \
+  ls -la /tmp/openvslam/3rd/FBoW/ && \
   cd build && \
   CMAKE_PREFIX_PATH=/opt/ros/${ROS_DISTRO}/lib/cmake cmake \
+    -DUSE_PANGOLIN_VIEWER=ON \
+    -DINSTALL_PANGOLIN_VIEWER=ON \
+    -DUSE_SOCKET_PUBLISHER=OFF \
     -DUSE_STACK_TRACE_LOGGER=ON \
+    -DBOW_FRAMEWORK=DBoW2 \
+    -DBUILD_TESTS=ON \
+    -DBUILD_EXAMPLES=ON \
     .. && \
   make -j${NUM_THREADS} && \
-  rm -rf CMakeCache.txt CMakeFiles Makefile cmake_install.cmake example src && \
-  chmod -R 777 ./*
+  chmod -R 777 ./* && \
+  make install 
 
 # ROS
 RUN set -x && \
@@ -137,7 +145,8 @@ RUN set -x && \
   rm -rf /var/lib/apt/lists/*
 
 WORKDIR /openvslam/ros/1
-
+RUN mkdir /openvslam/ros/1/src
+COPY . /openvslam/ros/1/src/openvslam_ros
 RUN set -x && \
   : "build ROS packages" && \
   bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash; \
