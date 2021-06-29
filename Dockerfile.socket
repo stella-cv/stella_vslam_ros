@@ -21,9 +21,6 @@ RUN set -x && \
     libgoogle-glog-dev \
     libatlas-base-dev \
     libsuitesparse-dev && \
-  : "Pangolin dependencies" && \
-  apt-get install -y -qq \
-    libglew-dev && \
   : "other dependencies" && \
   apt-get install -y -qq \
     libgoogle-glog-dev \
@@ -45,25 +42,6 @@ ENV LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib:${LD_LIBRARY_PATH}
 
 ENV NVIDIA_VISIBLE_DEVICES ${NVIDIA_VISIBLE_DEVICES:-all}
 ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
-
-# DBoW2
-ARG DBOW2_COMMIT=687fcb74dd13717c46add667e3fbfa9828a7019f
-WORKDIR /tmp
-RUN set -x && \
-  git clone https://github.com/OpenVSLAM-Community/DBoW2.git && \
-  cd DBoW2 && \
-  git checkout ${DBOW2_COMMIT} && \
-  mkdir -p build && \
-  cd build && \
-  cmake \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} \
-    .. && \
-  make -j${NUM_THREADS} && \
-  make install && \
-  cd /tmp && \
-  rm -rf *
-ENV DBoW2_DIR=${CMAKE_INSTALL_PREFIX}/lib/cmake/DBoW2
 
 # socket.io-client-cpp
 ARG SIOCLIENT_COMMIT=ff6ef08e45c594e33aa6bc19ebdd07954914efe0
@@ -155,11 +133,9 @@ RUN set -x && \
   : "build ROS2 packages" && \
   bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash; \
   colcon build --parallel-workers ${NUM_THREADS} --cmake-args \
-    -DBUILD_WITH_MARCH_NATIVE=ON \
     -DUSE_PANGOLIN_VIEWER=OFF \
     -DUSE_SOCKET_PUBLISHER=ON \
-    -DUSE_STACK_TRACE_LOGGER=ON \
-    -DBOW_FRAMEWORK=DBoW2"
+    -DUSE_STACK_TRACE_LOGGER=ON"
 
 RUN set -x && \
   sh -c "echo '#'\!'/bin/bash\nset -e\nsource /opt/ros/${ROS_DISTRO}/setup.bash\nsource /ros2_ws/install/setup.bash\nexec \"\$@\"' > /ros_entrypoint.sh" && \
