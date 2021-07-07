@@ -108,7 +108,7 @@ Execute the following commands:
 
 
 `Terminal2:`
-Launch the container of OpenVSLAM-socket. The shell interface will be launched in the docker container.Download an ORB vocabulary from GitHub.
+Launch the container of OpenVSLAM-socket. The shell interface will be launched in the docker container.Download an ORB vocabulary from GitHub. Publish Images Captured by a USB Camera using package like image_tools.
 
     xhost +local:
     docker run --rm -it --name openvslam-ros-socket --device /dev/video0 --net=host openvslam-ros-socket
@@ -117,7 +117,7 @@ Launch the container of OpenVSLAM-socket. The shell interface will be launched i
     
 
 `Terminal3:`
-Publish image
+Republish the ROS topic to `/camera/image_raw`.
 
     docker exec -it openvslam-ros-socket /bin/bash
     root@hostname:/ros2_ws#source /opt/ros/galactic/setup.bash
@@ -167,7 +167,7 @@ Download an ORB vocabulary from GitHub and download a sample dataset from Google
     root@hostname:/ros2_ws#FILE_ID="1d8kADKWBptEqTF7jEVhKatBEdN7g0ikY"
     root@hostname:/ros2_ws#curl -sc /tmp/cookie "https://drive.google.com/uc?export=download&id=${FILE_ID}" > /dev/null
     root@hostname:/ros2_ws#CODE="$(awk '/_warning_/ {print $NF}' /tmp/cookie)"
-    root@hostname:/ros2_ws#curl -sLb /tmp/cookie "https://drive.google.com/uc?export=download&confirm=${CODE}&id=${FILE_ID}" -o aist_living_lab_1.zip
+    root@hostname:/ros2_ws#curl -sLb /tmp/cookie "https://drive.google.com/uc?export=download&confirm=${CODE}&id=${FILE_ID}" -o aist_lInputsiving_lab_1.zip
     root@hostname:/ros2_ws#unzip aist_living_lab_1.zip
 
     root@hostname:/ros2_ws#FILE_ID="1TVf2D2QvMZPHsFoTb7HNxbXclPoFMGLX"
@@ -222,14 +222,15 @@ Run localization
 
     root@hostname:/ros2_ws#ros2 run openvslam_ros run_localization -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db aist_living_lab_1_map.msg
 
-### Step 5.3: using ROSBAG file
+### Step 5.3: Using ROSBAG file
 Execute the following commands:
 
 `Terminal2:`
-Launch the container of OpenVSLAM-socket. The shell interface will be launched in the docker container.
-
-    docker run --rm -it --name openvslam-ros-socket --net=host openvslam-ros-socket
-    OR if you would like to mount a folder (ex:Inputs) to access all required files like config.yaml, rosbag.bag etc then you can run below:
+Launch container of openvslam-ros-socket. The shell interface will be launched in the docker container.
+    
+    docker run --rm -it --name openvslam-ros-socket --net=host openvslam-ros-socket   
+OR if you would like to mount a folder (ex:Inputs) to access all required files like config.yaml, rosbag.bag etc then you can run below:
+    
     docker run --rm -it --name openvslam-ros-socket --net=host -v $PWD/Inputs:/ros2_ws/Inputs openvslam-ros-socket
     root@hostname:/ros2_ws#ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link
 
@@ -250,8 +251,15 @@ Launch the container of OpenVSLAM-socket. The shell interface will be launched i
 
 
 `Terminal5:`
+
+Build docker image with rosbag installed and launch container of openvslam-rosbag.
     
-    docker exec -it openvslam-ros-socket /bin/bash
+
+    docker build -t openvslam-rosbag -f Dockerfile.rosbag .    
+    docker run --rm -it --name openvslam-rosbag --net=host openvslam-rosbag
+    OR
+    docker run --rm -it --name openvslam-rosbag --net=host -v $PWD/Inputs:/ros2_ws/Inputs openvslam-rosbag
+  
     root@hostname:/ros2_ws#source /opt/ros/${ROS1_DISTRO}/setup.bash
     root@hostname:/ros2_ws#source /opt/ros/foxy/setup.bash
     root@hostname:/ros2_ws#ros2 bag play -s rosbag_v2 /path/to/rosbagfile.bag
@@ -277,5 +285,7 @@ Run localization
 
     root@hostname:/ros2_ws#ros2 run openvslam_ros run_localization -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db /path/to/message.msg --ros-args -r /camera/image_raw:=/cam0/image_raw
 
+`Terminal5:`
 
+    root@hostname:/ros2_ws#ros2 bag play -s rosbag_v2 /path/to/rosbagfile.bag
 
