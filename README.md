@@ -267,7 +267,7 @@ Build docker image with rosbag installed and launch container of openvslam-rosba
 
 You can see the mapping and tracking in your localhost browser.
 Once mapping is done, click the [Terminate] button to close the viewer.
-you can find aist_living_lab_1_map.msg in the current directory.
+you can find message.msg in the directory mentioned in Terminal 4.
        
 
 `Terminal2:`
