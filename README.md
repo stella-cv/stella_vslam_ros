@@ -69,7 +69,6 @@ For example:
     docker build -t openvslam-ros-socket -f Dockerfile.socket . --build-arg NUM_THREADS=4
 
 ### Step 3: Docker Image of Server
-Copy viewer folder from the main 'openvslam' [repository](https://github.com/OpenVSLAM-Community/openvslam) to your present working direcory i.e 'openvslam_ros'. Then create docker image for socket server.
 
 Execute the following commands:
 
