@@ -3,7 +3,6 @@ ENV DEBIAN_FRONTEND noninteractive
 
 # ROS2
 RUN set -x && \
-  sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list' && \
   apt-get update -y -qq && \
   : "install ROS1 and ROS2" && \
   apt-get install -y -qq \
