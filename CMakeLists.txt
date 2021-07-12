@@ -114,8 +114,15 @@ endif()
 #################
 
 find_package(catkin REQUIRED COMPONENTS
+        roscpp
         cv_bridge
-        image_transport)
+        image_transport
+        message_filters
+        nav_msgs
+        tf2_ros
+        tf2_msgs
+        tf2
+        tf2_geometry_msgs)
 
 # thread library
 find_package(Threads REQUIRED)
