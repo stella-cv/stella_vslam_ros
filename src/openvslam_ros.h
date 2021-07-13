@@ -39,6 +39,7 @@ public:
     std::unique_ptr<tf2_ros::Buffer> tf_;
     std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
     bool publish_tf_;
+    double transform_tolerance_;
 };
 
 class mono : public system {
