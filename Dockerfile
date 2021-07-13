@@ -142,6 +142,7 @@ RUN set -x && \
   rm -rf /var/lib/apt/lists/*
 
 WORKDIR /catkin_ws
+COPY . /catkin_ws/src/openvslam_ros
 
 RUN set -x && \
   : "build ROS packages" && \
