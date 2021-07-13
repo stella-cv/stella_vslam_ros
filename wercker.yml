@@ -61,17 +61,23 @@ build:
       code: |
         source ../ros_ws/devel/setup.bash
         roscore&
+        rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link&
+        rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 base_link cam0&
         rosrun openvslam_ros run_slam -v /datasets/orb_vocab/orb_vocab.dbow2 -c openvslam/example/euroc/EuRoC_mono.yaml --map-db map.msg /camera/image_raw:=/cam0/image_raw&
         rosbag play /datasets/EuRoC/MH_04_difficult.bag
         pkill -SIGINT -f run_slam
+        pkill -SIGINT -f static_transform_publisher
         pkill -SIGINT roscore
     - script:
       name: run run_localization
       code: |
         source ../ros_ws/devel/setup.bash
         roscore&
+        rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link&
+        rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 base_link cam0&
         rosrun openvslam_ros run_localization -v /datasets/orb_vocab/orb_vocab.dbow2 -c openvslam/example/euroc/EuRoC_mono.yaml --map-db map.msg /camera/image_raw:=/cam0/image_raw&
         sleep 5
         rosbag play /datasets/EuRoC/MH_04_difficult.bag
         pkill -SIGINT -f run_localization
+        pkill -SIGINT -f static_transform_publisher
         pkill -SIGINT roscore
