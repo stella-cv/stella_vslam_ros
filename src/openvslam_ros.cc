@@ -1,10 +1,13 @@
 #include <openvslam_ros.h>
+#include <openvslam/publish/map_publisher.h>
 
 #include <chrono>
 
+#include <tf2_eigen/tf2_eigen.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgcodecs.hpp>
-#include <openvslam/publish/map_publisher.h>
 #include <Eigen/Geometry>
 
 namespace openvslam_ros {
@@ -16,56 +19,36 @@ system::system(const std::shared_ptr<openvslam::config>& cfg, const std::string&
       tf_(std::make_unique<tf2_ros::Buffer>()),
       transform_listener_(std::make_shared<tf2_ros::TransformListener>(*tf_)) {}
 
-void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc) {
-    const std::lock_guard<std::mutex> lock(camera_link_mutex);
+void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& stamp) {
     // Extract rotation matrix and translation vector from
-    Eigen::Matrix3d rot = cam_pose_wc.block<3, 3>(0, 0);
-    Eigen::Vector3d trans = cam_pose_wc.block<3, 1>(0, 3);
+    Eigen::Matrix3d rot(cam_pose_wc.block<3, 3>(0, 0));
+    Eigen::Translation3d trans(cam_pose_wc.block<3, 1>(0, 3));
+    Eigen::Affine3d map_to_camera_affine(trans * rot);
     Eigen::Matrix3d cv_to_ros;
     cv_to_ros << 0, 0, 1,
         -1, 0, 0,
         0, -1, 0;
 
     // Transform from CV coordinate system to ROS coordinate system on camera coordinates
-    Eigen::Quaterniond quat(cv_to_ros * rot * cv_to_ros.transpose());
-    trans = cv_to_ros * trans;
+    map_to_camera_affine.prerotate(cv_to_ros).rotate(cv_to_ros.transpose());
 
     // Create odometry message and update it with current camera pose
     nav_msgs::Odometry pose_msg;
-    pose_msg.header.stamp = ros::Time::now();
+    pose_msg.header.stamp = stamp;
     pose_msg.header.frame_id = map_frame_;
     pose_msg.child_frame_id = camera_link_;
-    pose_msg.pose.pose.orientation.x = quat.x();
-    pose_msg.pose.pose.orientation.y = quat.y();
-    pose_msg.pose.pose.orientation.z = quat.z();
-    pose_msg.pose.pose.orientation.w = quat.w();
-    pose_msg.pose.pose.position.x = trans(0);
-    pose_msg.pose.pose.position.y = trans(1);
-    pose_msg.pose.pose.position.z = trans(2);
+    pose_msg.pose.pose = tf2::toMsg(map_to_camera_affine);
     pose_pub_.publish(pose_msg);
-
     // Send map->odom transform. Set publish_tf_ to false with not using TF
     if (publish_tf_) {
-        tf2::Stamped<tf2::Transform> camera_to_map(tf2::Transform(tf2::Quaternion(quat.x(), quat.y(), quat.z(), quat.w()),
-                                                                  tf2::Vector3(trans(0), trans(1), trans(2)))
-                                                       .inverse(),
-                                                   ros::Time::now(), camera_link_);
-
-        geometry_msgs::TransformStamped camera_to_map_msg, odom_to_map_msg, map_to_odom_msg;
-        tf2::Stamped<tf2::Transform> odom_to_map_stamped;
-
-        camera_to_map_msg = tf2::toMsg(camera_to_map);
-
         try {
-            odom_to_map_msg = tf_->transform(camera_to_map_msg, odom_frame_);
-            tf2::fromMsg(odom_to_map_msg, odom_to_map_stamped);
+            auto camera_to_odom = tf_->lookupTransform(camera_link_, odom_frame_, stamp, ros::Duration(0.0));
+            Eigen::Affine3d camera_to_odom_affine = tf2::transformToEigen(camera_to_odom.transform);
 
-            map_to_odom_msg.transform = tf2::toMsg(tf2::Transform(tf2::Quaternion(odom_to_map_stamped.getRotation()),
-                                                                  tf2::Vector3(odom_to_map_stamped.getOrigin()))
-                                                       .inverse());
+            auto map_to_odom_msg = tf2::eigenToTransform(map_to_camera_affine * camera_to_odom_affine);
+            map_to_odom_msg.header.stamp = stamp;
             map_to_odom_msg.header.frame_id = map_frame_;
             map_to_odom_msg.child_frame_id = odom_frame_;
-            map_to_odom_msg.header.stamp = ros::Time::now();
             map_to_odom_broadcaster_->sendTransform(map_to_odom_msg);
         }
         catch (tf2::TransformException& ex) {
@@ -91,7 +74,6 @@ mono::mono(const std::shared_ptr<openvslam::config>& cfg, const std::string& voc
 }
 void mono::callback(const sensor_msgs::ImageConstPtr& msg) {
     if (camera_link_.empty()) {
-        const std::lock_guard<std::mutex> lock(camera_link_mutex);
         camera_link_ = msg->header.frame_id;
     }
     const auto tp_1 = std::chrono::steady_clock::now();
@@ -106,7 +88,7 @@ void mono::callback(const sensor_msgs::ImageConstPtr& msg) {
     track_times_.push_back(track_time);
 
     if (cam_pose_wc) {
-        publish_pose(*cam_pose_wc);
+        publish_pose(*cam_pose_wc, msg->header.stamp);
     }
 }
 
@@ -122,7 +104,6 @@ stereo::stereo(const std::shared_ptr<openvslam::config>& cfg, const std::string&
 
 void stereo::callback(const sensor_msgs::ImageConstPtr& left, const sensor_msgs::ImageConstPtr& right) {
     if (camera_link_.empty()) {
-        const std::lock_guard<std::mutex> lock(camera_link_mutex);
         camera_link_ = left->header.frame_id;
     }
     auto leftcv = cv_bridge::toCvShare(left)->image;
@@ -147,7 +128,7 @@ void stereo::callback(const sensor_msgs::ImageConstPtr& left, const sensor_msgs:
     track_times_.push_back(track_time);
 
     if (cam_pose_wc) {
-        publish_pose(*cam_pose_wc);
+        publish_pose(*cam_pose_wc, left->header.stamp);
     }
 }
 
@@ -161,7 +142,6 @@ rgbd::rgbd(const std::shared_ptr<openvslam::config>& cfg, const std::string& voc
 
 void rgbd::callback(const sensor_msgs::ImageConstPtr& color, const sensor_msgs::ImageConstPtr& depth) {
     if (camera_link_.empty()) {
-        const std::lock_guard<std::mutex> lock(camera_link_mutex);
         camera_link_ = color->header.frame_id;
     }
     auto colorcv = cv_bridge::toCvShare(color)->image;
@@ -182,7 +162,7 @@ void rgbd::callback(const sensor_msgs::ImageConstPtr& color, const sensor_msgs::
     track_times_.push_back(track_time);
 
     if (cam_pose_wc) {
-        publish_pose(*cam_pose_wc);
+        publish_pose(*cam_pose_wc, color->header.stamp);
     }
 }
 } // namespace openvslam_ros

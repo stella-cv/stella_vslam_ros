@@ -16,9 +16,6 @@
 
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/transform_broadcaster.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-
-#include <geometry_msgs/TransformStamped.h>
 
 #include <opencv2/core/core.hpp>
 
@@ -26,7 +23,7 @@ namespace openvslam_ros {
 class system {
 public:
     system(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path);
-    void publish_pose(const Eigen::Matrix4d& cam_pose_wc);
+    void publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& stamp);
     void setParams();
     openvslam::system SLAM_;
     std::shared_ptr<openvslam::config> cfg_;
@@ -42,7 +39,6 @@ public:
     std::unique_ptr<tf2_ros::Buffer> tf_;
     std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
     bool publish_tf_;
-    std::mutex camera_link_mutex;
 };
 
 class mono : public system {
