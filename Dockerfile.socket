@@ -1,0 +1,165 @@
+FROM ros:noetic
+ENV DEBIAN_FRONTEND noninteractive
+
+# install dependencies via apt
+ENV DEBCONF_NOWARNINGS yes
+RUN set -x && \
+  apt-get update -y -qq && \
+  apt-get upgrade -y -qq --no-install-recommends && \
+  : "basic dependencies" && \
+  apt-get install -y -qq \
+    build-essential \
+    pkg-config \
+    cmake \
+    git \
+    wget \
+    curl \
+    tar \
+    unzip && \
+  : "g2o dependencies" && \
+  apt-get install -y -qq \
+    libgoogle-glog-dev \
+    libatlas-base-dev \
+    libsuitesparse-dev && \
+  : "Pangolin dependencies" && \
+  apt-get install -y -qq \
+    libglew-dev && \
+  : "other dependencies" && \
+  apt-get install -y -qq \
+    libgoogle-glog-dev \
+    libyaml-cpp-dev \ 
+    libopencv-dev \
+    libeigen3-dev && \
+  : "remove cache" && \
+  apt-get autoremove -y -qq && \
+  rm -rf /var/lib/apt/lists/*
+
+ARG CMAKE_INSTALL_PREFIX=/usr/local
+ARG NUM_THREADS=1
+
+ENV CPATH=${CMAKE_INSTALL_PREFIX}/include:${CPATH}
+ENV C_INCLUDE_PATH=${CMAKE_INSTALL_PREFIX}/include:${C_INCLUDE_PATH}
+ENV CPLUS_INCLUDE_PATH=${CMAKE_INSTALL_PREFIX}/include:${CPLUS_INCLUDE_PATH}
+ENV LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib:${LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib:${LD_LIBRARY_PATH}
+
+ENV NVIDIA_VISIBLE_DEVICES ${NVIDIA_VISIBLE_DEVICES:-all}
+ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
+
+# DBoW2
+ARG DBOW2_COMMIT=687fcb74dd13717c46add667e3fbfa9828a7019f
+WORKDIR /tmp
+RUN set -x && \
+  git clone https://github.com/OpenVSLAM-Community/DBoW2.git && \
+  cd DBoW2 && \
+  git checkout ${DBOW2_COMMIT} && \
+  mkdir -p build && \
+  cd build && \
+  cmake \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} \
+    .. && \
+  make -j${NUM_THREADS} && \
+  make install && \
+  cd /tmp && \
+  rm -rf *
+ENV DBoW2_DIR=${CMAKE_INSTALL_PREFIX}/lib/cmake/DBoW2
+
+# socket.io-client-cpp
+ARG SIOCLIENT_COMMIT=ff6ef08e45c594e33aa6bc19ebdd07954914efe0
+WORKDIR /tmp
+RUN set -x && \
+  git clone https://github.com/shinsumicco/socket.io-client-cpp.git && \
+  cd socket.io-client-cpp && \
+  git checkout ${SIOCLIENT_COMMIT} && \
+  git submodule init && \
+  git submodule update && \
+  mkdir -p build && \
+  cd build && \
+  cmake \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} \
+    -DBUILD_UNIT_TESTS=OFF \
+    .. && \
+  make -j${NUM_THREADS} && \
+  make install && \
+  cd /tmp && \
+  rm -rf *
+ENV sioclient_DIR=${CMAKE_INSTALL_PREFIX}/lib/cmake/sioclient
+
+# protobuf
+WORKDIR /tmp
+RUN set -x && \
+  apt-get update -y -qq && \
+  apt-get upgrade -y -qq --no-install-recommends && \
+  apt-get install -y -qq autogen autoconf libtool && \
+  wget -q https://github.com/google/protobuf/archive/v3.6.1.tar.gz && \
+  tar xf v3.6.1.tar.gz && \
+  cd protobuf-3.6.1 && \
+  ./autogen.sh && \
+  ./configure --prefix=${CMAKE_INSTALL_PREFIX} --enable-static=no && \
+  make -j${NUM_THREADS} && \
+  make install && \
+  cd /tmp && \
+  rm -rf * && \
+  apt-get purge -y -qq autogen autoconf libtool && \
+  apt-get autoremove -y -qq && \
+  rm -rf /var/lib/apt/lists/*
+
+# OpenVSLAM
+RUN set -x && \
+  : "OpenVSLAM dependencies" && \
+  apt-get update -y -qq && \
+  apt-get install -y -qq \
+    ros-${ROS_DISTRO}-libg2o && \
+  : "remove cache" && \
+  apt-get autoremove -y -qq && \
+  rm -rf /var/lib/apt/lists/*
+
+RUN set -x && \
+  git clone --depth 1 https://github.com/OpenVSLAM-Community/openvslam.git && \
+  cd openvslam && \
+  git submodule update -i --recursive && \
+  mkdir -p build && \
+  cd build && \
+  CMAKE_PREFIX_PATH=/opt/ros/${ROS_DISTRO}/lib/cmake cmake \
+    -DUSE_PANGOLIN_VIEWER=OFF \
+    -DUSE_SOCKET_PUBLISHER=ON \
+    -DINSTALL_PANGOLIN_VIEWER=ON \
+    -DUSE_STACK_TRACE_LOGGER=ON \
+    .. && \
+  make -j${NUM_THREADS} && \
+  make install && \
+  rm -rf CMakeCache.txt CMakeFiles Makefile cmake_install.cmake example src && \
+  chmod -R 777 ./*
+
+# ROS
+RUN set -x && \
+  apt-get update -y -qq && \
+  : "install ROS packages" && \
+  apt-get install -y -qq \
+    ros-${ROS_DISTRO}-image-transport \
+    ros-${ROS_DISTRO}-cv-bridge && \
+  : "remove cache" && \
+  apt-get autoremove -y -qq && \
+  rm -rf /var/lib/apt/lists/*
+
+WORKDIR /catkin_ws
+COPY . /catkin_ws/src/openvslam_ros
+
+RUN set -x && \
+  : "build ROS packages" && \
+  bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash; \
+  catkin_make -j${NUM_THREADS} \
+    -DBUILD_WITH_MARCH_NATIVE=ON \
+    -DUSE_PANGOLIN_VIEWER=OFF \
+    -DUSE_SOCKET_PUBLISHER=ON \
+    -DUSE_STACK_TRACE_LOGGER=ON \
+    -DBOW_FRAMEWORK=DBoW2"
+
+RUN set -x && \
+  sh -c "echo '#'\!'/bin/bash\nset -e\nsource /opt/ros/${ROS_DISTRO}/setup.bash\nsource /catkin_ws/devel/setup.bash\nexec \"\$@\"' > /ros_entrypoint.sh" && \
+  chmod u+x /ros_entrypoint.sh
+
+ENTRYPOINT ["/ros_entrypoint.sh"]
+CMD ["bash"]
