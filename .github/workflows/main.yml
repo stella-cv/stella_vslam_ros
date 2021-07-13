@@ -17,7 +17,4 @@ jobs:
           extensions: 'h,cc'
           clangFormatVersion: 6
           style: file
-          inplace: True
-      - uses: EndBug/add-and-commit@v7
-        with:
-          default_author: github_actions
+          inplace: False
