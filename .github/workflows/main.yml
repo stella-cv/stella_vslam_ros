@@ -30,9 +30,9 @@ jobs:
       - uses: actions/checkout@v2
       - name: build ros2 packages
         run: |
-          mkdir -p ../ros_ws/src
-          cp -r . ../ros_ws/src/openvslam_ros
-          cd ../ros_ws/src
+          mkdir -p /ros_ws/src
+          cp -r . /ros_ws/src/openvslam_ros
+          cd /ros_ws/src
           git clone --depth 1 https://github.com/OpenVSLAM-Community/openvslam.git
           cd openvslam
           git submodule update -i --recursive
@@ -43,7 +43,7 @@ jobs:
         run: |
           (source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link)&
           (source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 base_link cam0)&
-          (source /opt/ros/${ROS2_DISTRO}/setup.bash && source ../ros_ws/install/setup.bash && ros2 run openvslam_ros run_slam -v /datasets/orb_vocab/orb_vocab.fbow -c ../ros_ws/src/openvslam/example/euroc/EuRoC_mono.yaml --map-db map.msg --ros-args -r /camera/image_raw:=/cam0/image_raw)&
+          (source /opt/ros/${ROS2_DISTRO}/setup.bash && source /ros_ws/install/setup.bash && ros2 run openvslam_ros run_slam -v /datasets/orb_vocab/orb_vocab.fbow -c /ros_ws/src/openvslam/example/euroc/EuRoC_mono.yaml --map-db map.msg --ros-args -r /camera/image_raw:=/cam0/image_raw)&
           (source /opt/ros/${ROS1_DISTRO}/setup.bash && source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 bag play -s rosbag_v2 /datasets/EuRoC/MH_04_difficult.bag)
           sleep 1
           echo "pkill -SIGINT -f run_slam"
@@ -54,7 +54,7 @@ jobs:
         run: |
           (source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link)&
           (source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 base_link cam0)&
-          (source /opt/ros/${ROS2_DISTRO}/setup.bash && source ../ros_ws/install/setup.bash && ros2 run openvslam_ros run_localization -v /datasets/orb_vocab/orb_vocab.fbow -c ../ros_ws/src/openvslam/example/euroc/EuRoC_mono.yaml --map-db map.msg --ros-args -r /camera/image_raw:=/cam0/image_raw)&
+          (source /opt/ros/${ROS2_DISTRO}/setup.bash && source /ros_ws/install/setup.bash && ros2 run openvslam_ros run_localization -v /datasets/orb_vocab/orb_vocab.fbow -c /ros_ws/src/openvslam/example/euroc/EuRoC_mono.yaml --map-db map.msg --ros-args -r /camera/image_raw:=/cam0/image_raw)&
           sleep 5
           (source /opt/ros/${ROS1_DISTRO}/setup.bash && source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 bag play -s rosbag_v2 /datasets/EuRoC/MH_04_difficult.bag)
           pkill -SIGINT -f run_localization
@@ -70,9 +70,9 @@ jobs:
     steps:
       - name: build ros2 packages
         run: |
-          mkdir -p ../ros_ws/src
-          cp -r . ../ros_ws/src/openvslam_ros
-          cd ../ros_ws/src
+          mkdir -p /ros_ws/src
+          cp -r . /ros_ws/src/openvslam_ros
+          cd /ros_ws/src
           git clone --depth 1 https://github.com/OpenVSLAM-Community/openvslam.git
           cd openvslam
           git submodule update -i --recursive
