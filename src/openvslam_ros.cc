@@ -156,6 +156,7 @@ void rgbd::callback(const sensor_msgs::ImageConstPtr& color, const sensor_msgs::
     if (colorcv.empty() || depthcv.empty()) {
         return;
     }
+    cv::patchNaNs(depthcv);
 
     const auto tp_1 = std::chrono::steady_clock::now();
     const auto timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(tp_1 - tp_0_).count();
