@@ -17,7 +17,10 @@ system::system(const std::shared_ptr<openvslam::config>& cfg, const std::string&
       pose_pub_(private_nh_.advertise<nav_msgs::Odometry>("camera_pose", 1)),
       map_to_odom_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>()),
       tf_(std::make_unique<tf2_ros::Buffer>()),
-      transform_listener_(std::make_shared<tf2_ros::TransformListener>(*tf_)) {}
+      transform_listener_(std::make_shared<tf2_ros::TransformListener>(*tf_)) {
+    init_pose_sub_ = nh_.subscribe(
+        "/initialpose", 1, &system::init_pose_callback, this);
+}
 
 void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& stamp) {
     // Extract rotation matrix and translation vector from
@@ -66,6 +69,9 @@ void system::setParams() {
     map_frame_ = std::string("map");
     private_nh_.param("map_frame", map_frame_, map_frame_);
 
+    base_link_ = std::string("base_footprint");
+    private_nh_.param("base_link", base_link_, base_link_);
+
     // Set publish_tf to false if not using TF
     publish_tf_ = true;
     private_nh_.param("publish_tf_", publish_tf_, publish_tf_);
@@ -73,6 +79,70 @@ void system::setParams() {
     // Publish pose's timestamp in the future
     transform_tolerance_ = 0.5;
     private_nh_.param("transform_tolerance", transform_tolerance_, transform_tolerance_);
+}
+
+void system::init_pose_callback(
+    const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
+    if (camera_link_.empty()) {
+        ROS_ERROR("Camera link is not set: no images were received yet");
+        return;
+    }
+
+    Eigen::Translation3d trans(
+        msg->pose.pose.position.x,
+        msg->pose.pose.position.y,
+        msg->pose.pose.position.z);
+    Eigen::Quaterniond rot_q(
+        msg->pose.pose.orientation.w,
+        msg->pose.pose.orientation.x,
+        msg->pose.pose.orientation.y,
+        msg->pose.pose.orientation.z);
+    Eigen::Affine3d initialpose_affine(trans * rot_q);
+
+    Eigen::Matrix3d rot_cv_to_ros_map_frame;
+    rot_cv_to_ros_map_frame << 0, -1, 0,
+        0, 0, -1,
+        1, 0, 0;
+
+    Eigen::Affine3d map_to_initialpose_frame_affine;
+    try {
+        auto map_to_initialpose_frame = tf_->lookupTransform(
+            map_frame_, msg->header.frame_id, msg->header.stamp,
+            ros::Duration(0.0));
+        map_to_initialpose_frame_affine = tf2::transformToEigen(
+            map_to_initialpose_frame.transform);
+    }
+    catch (tf2::TransformException& ex) {
+        ROS_ERROR("Transform failed: %s", ex.what());
+        return;
+    }
+
+    Eigen::Affine3d base_link_to_camera_affine;
+    try {
+        auto base_link_to_camera = tf_->lookupTransform(
+            base_link_, camera_link_, msg->header.stamp,
+            ros::Duration(0.0));
+        base_link_to_camera_affine = tf2::transformToEigen(base_link_to_camera.transform);
+    }
+    catch (tf2::TransformException& ex) {
+        ROS_ERROR("Transform failed: %s", ex.what());
+        return;
+    }
+
+    // Target transform is map_cv -> camera_link and known parameters are following:
+    //   rot_cv_to_ros_map_frame: T(map_cv -> map)
+    //   map_to_initialpose_frame_affine: T(map -> `msg->header.frame_id`)
+    //   initialpose_affine: T(`msg->header.frame_id` -> base_link)
+    //   base_link_to_camera_affine: T(base_link -> camera_link)
+    // The flow of the transformation is as follows:
+    //   map_cv -> map -> `msg->header.frame_id` -> base_link -> camera_link
+    Eigen::Matrix4d cam_pose_cv = (rot_cv_to_ros_map_frame * map_to_initialpose_frame_affine
+                                   * initialpose_affine * base_link_to_camera_affine)
+                                      .matrix();
+
+    if (!SLAM_.update_pose(cam_pose_cv)) {
+        ROS_ERROR("Can not set initial pose");
+    }
 }
 
 mono::mono(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
