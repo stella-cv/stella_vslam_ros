@@ -16,9 +16,11 @@ RUN set -x && \
     curl \
     tar \
     unzip && \
-  : "Pangolin dependencies" && \
+  : "g2o dependencies" && \
   apt-get install -y -qq \
-    libglew-dev && \
+    libgoogle-glog-dev \
+    libatlas-base-dev \
+    libsuitesparse-dev && \
   : "other dependencies" && \
   apt-get install -y -qq \
     libgoogle-glog-dev \
@@ -41,48 +43,46 @@ ENV LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib:${LD_LIBRARY_PATH}
 ENV NVIDIA_VISIBLE_DEVICES ${NVIDIA_VISIBLE_DEVICES:-all}
 ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
 
-# Pangolin
-ARG PANGOLIN_COMMIT=ad8b5f83222291c51b4800d5a5873b0e90a0cf81
+# socket.io-client-cpp
+ARG SIOCLIENT_COMMIT=ff6ef08e45c594e33aa6bc19ebdd07954914efe0
 WORKDIR /tmp
 RUN set -x && \
-  git clone https://github.com/stevenlovegrove/Pangolin.git && \
-  cd Pangolin && \
-  git checkout ${PANGOLIN_COMMIT} && \
-  sed -i -e "193,198d" ./src/utils/file_utils.cpp && \
+  git clone https://github.com/shinsumicco/socket.io-client-cpp.git && \
+  cd socket.io-client-cpp && \
+  git checkout ${SIOCLIENT_COMMIT} && \
+  git submodule init && \
+  git submodule update && \
   mkdir -p build && \
   cd build && \
   cmake \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} \
-    -DBUILD_EXAMPLES=OFF \
-    -DBUILD_PANGOLIN_DEPTHSENSE=OFF \
-    -DBUILD_PANGOLIN_FFMPEG=OFF \
-    -DBUILD_PANGOLIN_LIBDC1394=OFF \
-    -DBUILD_PANGOLIN_LIBJPEG=OFF \
-    -DBUILD_PANGOLIN_LIBOPENEXR=OFF \
-    -DBUILD_PANGOLIN_LIBPNG=OFF \
-    -DBUILD_PANGOLIN_LIBREALSENSE=OFF \
-    -DBUILD_PANGOLIN_LIBREALSENSE2=OFF \
-    -DBUILD_PANGOLIN_LIBTIFF=OFF \
-    -DBUILD_PANGOLIN_LIBUVC=OFF \
-    -DBUILD_PANGOLIN_LZ4=OFF \
-    -DBUILD_PANGOLIN_OPENNI=OFF \
-    -DBUILD_PANGOLIN_OPENNI2=OFF \
-    -DBUILD_PANGOLIN_PLEORA=OFF \
-    -DBUILD_PANGOLIN_PYTHON=OFF \
-    -DBUILD_PANGOLIN_TELICAM=OFF \
-    -DBUILD_PANGOLIN_TOON=OFF \
-    -DBUILD_PANGOLIN_UVC_MEDIAFOUNDATION=OFF \
-    -DBUILD_PANGOLIN_V4L=OFF \
-    -DBUILD_PANGOLIN_VIDEO=OFF \
-    -DBUILD_PANGOLIN_ZSTD=OFF \
-    -DBUILD_PYPANGOLIN_MODULE=OFF \
+    -DBUILD_UNIT_TESTS=OFF \
     .. && \
   make -j${NUM_THREADS} && \
   make install && \
   cd /tmp && \
   rm -rf *
-ENV Pangolin_DIR=${CMAKE_INSTALL_PREFIX}/lib/cmake/Pangolin
+ENV sioclient_DIR=${CMAKE_INSTALL_PREFIX}/lib/cmake/sioclient
+
+# protobuf
+WORKDIR /tmp
+RUN set -x && \
+  apt-get update -y -qq && \
+  apt-get upgrade -y -qq --no-install-recommends && \
+  apt-get install -y -qq autogen autoconf libtool && \
+  wget -q https://github.com/google/protobuf/archive/v3.6.1.tar.gz && \
+  tar xf v3.6.1.tar.gz && \
+  cd protobuf-3.6.1 && \
+  ./autogen.sh && \
+  ./configure --prefix=${CMAKE_INSTALL_PREFIX} --enable-static=no && \
+  make -j${NUM_THREADS} && \
+  make install && \
+  cd /tmp && \
+  rm -rf * && \
+  apt-get purge -y -qq autogen autoconf libtool && \
+  apt-get autoremove -y -qq && \
+  rm -rf /var/lib/apt/lists/*
 
 # OpenVSLAM
 RUN set -x && \
@@ -101,8 +101,8 @@ RUN set -x && \
   mkdir -p build && \
   cd build && \
   CMAKE_PREFIX_PATH=/opt/ros/${ROS_DISTRO}/lib/cmake cmake \
-    -DUSE_PANGOLIN_VIEWER=ON \
-    -DUSE_SOCKET_PUBLISHER=OFF \
+    -DUSE_PANGOLIN_VIEWER=OFF \
+    -DUSE_SOCKET_PUBLISHER=ON \
     -DINSTALL_PANGOLIN_VIEWER=ON \
     -DUSE_STACK_TRACE_LOGGER=ON \
     .. && \
@@ -129,8 +129,8 @@ RUN set -x && \
   : "build ROS packages" && \
   bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash; \
   catkin_make -j${NUM_THREADS} \
-    -DUSE_PANGOLIN_VIEWER=ON \
-    -DUSE_SOCKET_PUBLISHER=OFF \
+    -DUSE_PANGOLIN_VIEWER=OFF \
+    -DUSE_SOCKET_PUBLISHER=ON \
     -DUSE_STACK_TRACE_LOGGER=ON"
 
 RUN set -x && \

@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  - push
+  - pull_request
+  - workflow_dispatch
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: DoozyX/clang-format-lint-action@v0.12
+        with:
+          source: '.'
+          exclude: './3rd'
+          extensions: 'h,cc'
+          clangFormatVersion: 6
+          style: file
+          inplace: False
+
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    container:
+      image: ghcr.io/ymd-stella/openvslam-community/openvslam-ros:latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: install openvslam
+        run: |
+          git clone --depth 1 https://github.com/OpenVSLAM-Community/openvslam.git
+          cd openvslam
+          git submodule update -i --recursive
+          mkdir build
+          cd build
+          source /opt/ros/${ROS_DISTRO}/setup.bash # need to find libg2o
+          cmake -DCMAKE_BUILD_TYPE=Debug ..
+          make -j $(($(nproc) / 2))
+          make install
+      - name: build ros packages
+        run: |
+          mkdir -p /ros_ws/src
+          cp -r . /ros_ws/src/openvslam_ros
+          cd /ros_ws
+          source /opt/ros/${ROS_DISTRO}/setup.bash
+          catkin_make -j$(($(nproc) / 2))
+      - name: run run_slam
+        run: |
+          source /ros_ws/devel/setup.bash
+          roscore&
+          rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link&
+          rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 base_link cam0&
+          rosrun openvslam_ros run_slam -v /datasets/orb_vocab/orb_vocab.fbow -c openvslam/example/euroc/EuRoC_mono.yaml --map-db map.msg /camera/image_raw:=/cam0/image_raw&
+          rosbag play /datasets/EuRoC/MH_04_difficult.bag
+          pkill -SIGINT -f run_slam
+          pkill -SIGINT -f static_transform_publisher
+          pkill -SIGINT roscore
+      - name: run run_localization
+        run: |
+          source /ros_ws/devel/setup.bash
+          roscore&
+          rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link&
+          rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 base_link cam0&
+          rosrun openvslam_ros run_localization -v /datasets/orb_vocab/orb_vocab.fbow -c openvslam/example/euroc/EuRoC_mono.yaml --map-db map.msg /camera/image_raw:=/cam0/image_raw&
+          sleep 5
+          rosbag play /datasets/EuRoC/MH_04_difficult.bag
+          pkill -SIGINT -f run_localization
+          pkill -SIGINT -f static_transform_publisher
+          pkill -SIGINT roscore
