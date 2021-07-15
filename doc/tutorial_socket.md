@@ -93,7 +93,7 @@ Republish the ROS topic to `/camera/image_raw`.
 ```
 
 ```shell-session
-root@hostname:/ros2_ws# source /opt/ros/${ROS2_DISTRO}/setup.bash
+root@hostname:/ros2_ws# source /opt/ros/${ROS_DISTRO}/setup.bash
 root@hostname:/ros2_ws# source /ros2_ws/install/setup.bash
 root@hostname:/ros2_ws# ros2 run image_transport republish raw in:=image raw out:=/camera/image_raw
 ```
@@ -107,7 +107,7 @@ Run it in slam mode for run tracking and mapping. Please memtion the appropriate
 ```
 
 ```shell-session
-root@hostname:/ros2_ws# source /opt/ros/${ROS2_DISTRO}/setup.bash
+root@hostname:/ros2_ws# source /opt/ros/${ROS_DISTRO}/setup.bash
 root@hostname:/ros2_ws# source /ros2_ws/install/setup.bash
 root@hostname:/ros2_ws# ros2 run openvslam_ros run_slam -v ./orb_vocab.fbow -c /path/to/config.yaml --map-db ./usb_camera.msg
 ```
@@ -192,7 +192,7 @@ Terminal3:
 ```
 
 ```shell-session
-root@hostname:/ros2_ws# source /opt/ros/${ROS2_DISTRO}/setup.bash
+root@hostname:/ros2_ws# source /opt/ros/${ROS_DISTRO}/setup.bash
 root@hostname:/ros2_ws# source /ros2_ws/install/setup.bash
 root@hostname:/ros2_ws# ros2 run image_transport republish raw in:=image raw out:=/camera/image_raw
 ```
@@ -206,7 +206,7 @@ Terminal4:
 ```
 
 ```shell-session
-root@hostname:/ros2_ws# source /opt/ros/${ROS2_DISTRO}/setup.bash
+root@hostname:/ros2_ws# source /opt/ros/${ROS_DISTRO}/setup.bash
 root@hostname:/ros2_ws# source /ros2_ws/install/setup.bash
 root@hostname:/ros2_ws# ros2 run openvslam_ros run_slam -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db aist_living_lab_1_map.msg
 ```
@@ -268,7 +268,7 @@ Terminal3:
 ```
 
 ```shell-session
-root@hostname:/ros2_ws# source /opt/ros/${ROS2_DISTRO}/setup.bash
+root@hostname:/ros2_ws# source /opt/ros/${ROS_DISTRO}/setup.bash
 root@hostname:/ros2_ws# source /ros2_ws/install/setup.bash
 root@hostname:/ros2_ws# ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 base_link cam0
 ```
@@ -280,7 +280,7 @@ Terminal4:
 ```
 
 ```shell-session
-root@hostname:/ros2_ws# source /opt/ros/${ROS2_DISTRO}/setup.bash
+root@hostname:/ros2_ws# source /opt/ros/${ROS_DISTRO}/setup.bash
 root@hostname:/ros2_ws# source /ros2_ws/install/setup.bash
 root@hostname:/ros2_ws# ros2 run openvslam_ros run_slam -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db /path/to/message.msg --ros-args -r /camera/image_raw:=/cam0/image_raw
 ```
