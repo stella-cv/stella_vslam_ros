@@ -63,7 +63,7 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time
             map_to_odom_broadcaster_->sendTransform(map_to_odom_msg);
         }
         catch (tf2::TransformException& ex) {
-            RCLCPP_ERROR(node_->get_logger(), "Transform failed: %s", ex.what());
+            RCLCPP_ERROR_STREAM_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000, "Transform failed: " << ex.what());
         }
     }
 }
@@ -120,7 +120,7 @@ void system::init_pose_callback(
             map_to_initialpose_frame.transform);
     }
     catch (tf2::TransformException& ex) {
-        RCLCPP_ERROR(node_->get_logger(), "Transform failed: %s", ex.what());
+        RCLCPP_ERROR_STREAM_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000, "Transform failed: " << ex.what());
         return;
     }
 
@@ -132,7 +132,7 @@ void system::init_pose_callback(
         base_link_to_camera_affine = tf2::transformToEigen(base_link_to_camera.transform);
     }
     catch (tf2::TransformException& ex) {
-        RCLCPP_ERROR(node_->get_logger(), "Transform failed: %s", ex.what());
+        RCLCPP_ERROR_STREAM_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000, "Transform failed: " << ex.what());
         return;
     }
 
