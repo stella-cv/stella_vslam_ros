@@ -74,7 +74,7 @@ void system::setParams() {
 
     // Set publish_tf to false if not using TF
     publish_tf_ = true;
-    private_nh_.param("publish_tf_", publish_tf_, publish_tf_);
+    private_nh_.param("publish_tf", publish_tf_, publish_tf_);
 
     // Publish pose's timestamp in the future
     transform_tolerance_ = 0.5;
