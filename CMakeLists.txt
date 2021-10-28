@@ -125,7 +125,8 @@ find_package(catkin REQUIRED COMPONENTS
         tf2_eigen
         tf2_geometry_msgs
         tf2_msgs
-        tf2_ros)
+        tf2_ros
+        pcl_ros)
 
 # thread library
 find_package(Threads REQUIRED)
