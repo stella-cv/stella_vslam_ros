@@ -118,7 +118,8 @@ RUN set -x && \
   apt-get install -y -qq \
     ros-${ROS_DISTRO}-image-transport \
     ros-${ROS_DISTRO}-cv-bridge \
-    ros-${ROS_DISTRO}-geometry2 && \
+    ros-${ROS_DISTRO}-geometry2 \
+    ros-${ROS_DISTRO}-pcl-ros && \
   : "remove cache" && \
   apt-get autoremove -y -qq && \
   rm -rf /var/lib/apt/lists/*
