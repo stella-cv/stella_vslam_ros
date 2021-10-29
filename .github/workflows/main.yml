@@ -46,13 +46,24 @@ jobs:
           cd /ros_ws
           source /opt/ros/${ROS_DISTRO}/setup.bash
           catkin_make -j$(($(nproc) / 2))
-      - name: run run_slam
+      - name: run run_slam (mono)
         run: |
           source /ros_ws/devel/setup.bash
           roscore&
           rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link&
           rosrun tf2_ros static_transform_publisher 0 0 0 -1.57 0.0 -1.57 base_link cam0&
           rosrun openvslam_ros run_slam -v /datasets/orb_vocab/orb_vocab.fbow -c openvslam/example/euroc/EuRoC_mono.yaml --map-db map.msg /camera/image_raw:=/cam0/image_raw&
+          rosbag play /datasets/EuRoC/MH_04_difficult.bag
+          pkill -SIGINT -f run_slam
+          pkill -SIGINT -f static_transform_publisher
+          pkill -SIGINT roscore
+      - name: run run_slam (stereo)
+        run: |
+          source /ros_ws/devel/setup.bash
+          roscore&
+          rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link&
+          rosrun tf2_ros static_transform_publisher 0 0 0 -1.57 0.0 -1.57 base_link cam0&
+          rosrun openvslam_ros run_slam -r -v /datasets/orb_vocab/orb_vocab.fbow -c openvslam/example/euroc/EuRoC_stereo.yaml --map-db map.msg /camera/left/image_raw:=/cam0/image_raw /camera/right/image_raw:=/cam1/image_raw&
           rosbag play /datasets/EuRoC/MH_04_difficult.bag
           pkill -SIGINT -f run_slam
           pkill -SIGINT -f static_transform_publisher
