@@ -93,6 +93,10 @@ void system::setParams() {
     // Set publish_tf to false if not using TF
     publish_tf_ = true;
     private_nh_.param("publish_tf", publish_tf_, publish_tf_);
+    
+    // Set publish_pointcloud_ to true if publish pointcloud
+    publish_pointcloud_ = false;
+    private_nh_.param("publish_pointcloud_", publish_pointcloud_, publish_pointcloud_);
 
     // Publish pose's timestamp in the future
     transform_tolerance_ = 0.5;
