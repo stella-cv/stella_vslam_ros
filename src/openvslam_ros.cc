@@ -62,21 +62,21 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& s
         }
     }
     if (publish_pointcloud_) {
-      std::vector<openvslam::data::landmark*> landmarks;
-      std::set<openvslam::data::landmark*> local_landmarks;
-      SLAM_.get_map_publisher()->get_landmarks(landmarks, local_landmarks);
-      pcl::PointCloud<pcl::PointXYZ> points;
-      for (const auto lm : landmarks) {
-          if (!lm || lm->will_be_erased()) {
-              continue;
-          }
-          const openvslam::Vec3_t pos_w = rot_ros_to_cv_map_frame * lm->get_pos_in_world();
-          points.push_back(pcl::PointXYZ(pos_w.z(), -pos_w.x(), -pos_w.y()));
-      }
-      sensor_msgs::PointCloud2 pcout;
-      pcl::toROSMsg(points, pcout);
-      pcout.header.frame_id = map_frame_;
-      pc_pub_.publish(pcout);
+        std::vector<openvslam::data::landmark*> landmarks;
+        std::set<openvslam::data::landmark*> local_landmarks;
+        SLAM_.get_map_publisher()->get_landmarks(landmarks, local_landmarks);
+        pcl::PointCloud<pcl::PointXYZ> points;
+        for (const auto lm : landmarks) {
+            if (!lm || lm->will_be_erased()) {
+                continue;
+            }
+            const openvslam::Vec3_t pos_w = rot_ros_to_cv_map_frame * lm->get_pos_in_world();
+            points.push_back(pcl::PointXYZ(pos_w.z(), -pos_w.x(), -pos_w.y()));
+        }
+        sensor_msgs::PointCloud2 pcout;
+        pcl::toROSMsg(points, pcout);
+        pcout.header.frame_id = map_frame_;
+        pc_pub_.publish(pcout);
     }
 }
 
@@ -93,7 +93,7 @@ void system::setParams() {
     // Set publish_tf to false if not using TF
     publish_tf_ = true;
     private_nh_.param("publish_tf", publish_tf_, publish_tf_);
-    
+
     // Set publish_pointcloud_ to true if publish pointcloud
     publish_pointcloud_ = false;
     private_nh_.param("publish_pointcloud", publish_pointcloud_, publish_pointcloud_);
