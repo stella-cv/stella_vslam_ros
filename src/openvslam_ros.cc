@@ -96,7 +96,7 @@ void system::setParams() {
     
     // Set publish_pointcloud_ to true if publish pointcloud
     publish_pointcloud_ = false;
-    private_nh_.param("publish_pointcloud_", publish_pointcloud_, publish_pointcloud_);
+    private_nh_.param("publish_pointcloud", publish_pointcloud_, publish_pointcloud_);
 
     // Publish pose's timestamp in the future
     transform_tolerance_ = 0.5;
