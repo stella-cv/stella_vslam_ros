@@ -7,7 +7,6 @@
 #include "openvslam/data/landmark.h"
 #include "openvslam/publish/map_publisher.h"
 
-
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 #include <image_transport/subscriber_filter.h>
@@ -26,7 +25,6 @@
 #include <pcl_ros/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <sensor_msgs/PointCloud2.h>
-
 
 namespace openvslam_ros {
 class system {
@@ -49,7 +47,7 @@ public:
     std::string odom_frame_, map_frame_, base_link_, camera_link_;
     std::unique_ptr<tf2_ros::Buffer> tf_;
     std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
-    bool publish_tf_;
+    bool publish_tf_, publish_pointcloud_;
     double transform_tolerance_;
 
 private:
