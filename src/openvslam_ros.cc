@@ -61,26 +61,23 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& s
             ROS_ERROR("Transform failed: %s", ex.what());
         }
     }
-    std::vector<openvslam::data::landmark*> landmarks;
-    std::set<openvslam::data::landmark*> local_landmarks;
-    SLAM_.get_map_publisher()->get_landmarks(landmarks, local_landmarks);
-    pcl::PointCloud<pcl::PointXYZ> points;
-    for (const auto lm : landmarks) {
-        if (!lm || lm->will_be_erased()) {
-            continue;
-        }
-        if (local_landmarks.count(lm)) {
-            continue;
-        }
-        const openvslam::Vec3_t pos_w = lm->get_pos_in_world();
-        points.push_back(pcl::PointXYZ(pos_w.z(), -pos_w.x(), -pos_w.y()));
+    if (publish_pointcloud_) {
+      std::vector<openvslam::data::landmark*> landmarks;
+      std::set<openvslam::data::landmark*> local_landmarks;
+      SLAM_.get_map_publisher()->get_landmarks(landmarks, local_landmarks);
+      pcl::PointCloud<pcl::PointXYZ> points;
+      for (const auto lm : landmarks) {
+          if (!lm || lm->will_be_erased()) {
+              continue;
+          }
+          const openvslam::Vec3_t pos_w = rot_ros_to_cv_map_frame * lm->get_pos_in_world();
+          points.push_back(pcl::PointXYZ(pos_w.z(), -pos_w.x(), -pos_w.y()));
+      }
+      sensor_msgs::PointCloud2 pcout;
+      pcl::toROSMsg(points, pcout);
+      pcout.header.frame_id = map_frame_;
+      pc_pub_.publish(pcout);
     }
-    sensor_msgs::PointCloud2 pcout;
-    ROS_INFO("points size is %lu", points.size());
-    pcl::toROSMsg(points, pcout);
-    pcout.header.frame_id = "kdlidar_origin";
-    pc_pub_.publish(pcout);
-
 }
 
 void system::setParams() {
