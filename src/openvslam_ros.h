@@ -38,7 +38,8 @@ public:
     ros::Publisher pose_pub_;
     ros::Subscriber init_pose_sub_;
     std::shared_ptr<tf2_ros::TransformBroadcaster> map_to_odom_broadcaster_;
-    std::string odom_frame_, map_frame_, base_link_, camera_link_;
+    std::string odom_frame_, map_frame_, base_link_;
+    std::string camera_frame_, camera_optical_frame_;
     std::unique_ptr<tf2_ros::Buffer> tf_;
     std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
     bool publish_tf_;
