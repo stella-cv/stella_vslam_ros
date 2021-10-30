@@ -20,6 +20,7 @@ system::system(const std::shared_ptr<openvslam::config>& cfg, const std::string&
       transform_listener_(std::make_shared<tf2_ros::TransformListener>(*tf_)) {
     init_pose_sub_ = nh_.subscribe(
         "/initialpose", 1, &system::init_pose_callback, this);
+    setParams();
 }
 
 void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& stamp) {
@@ -178,9 +179,17 @@ stereo::stereo(const std::shared_ptr<openvslam::config>& cfg, const std::string&
     : system(cfg, vocab_file_path, mask_img_path),
       rectifier_(rectify ? std::make_shared<openvslam::util::stereo_rectifier>(cfg) : nullptr),
       left_sf_(it_, "camera/left/image_raw", 1),
-      right_sf_(it_, "camera/right/image_raw", 1),
-      sync_(SyncPolicy(10), left_sf_, right_sf_) {
-    sync_.registerCallback(&stereo::callback, this);
+      right_sf_(it_, "camera/right/image_raw", 1) {
+    use_exact_time_ = false;
+    private_nh_.param("use_exact_time", use_exact_time_, use_exact_time_);
+    if (use_exact_time_) {
+        exact_time_sync_ = std::make_shared<ExactTimeSyncPolicy::Sync>(2, left_sf_, right_sf_);
+        exact_time_sync_->registerCallback(&stereo::callback, this);
+    }
+    else {
+        approx_time_sync_ = std::make_shared<ApproximateTimeSyncPolicy::Sync>(10, left_sf_, right_sf_);
+        approx_time_sync_->registerCallback(&stereo::callback, this);
+    }
 }
 
 void stereo::callback(const sensor_msgs::ImageConstPtr& left, const sensor_msgs::ImageConstPtr& right) {
@@ -216,9 +225,17 @@ void stereo::callback(const sensor_msgs::ImageConstPtr& left, const sensor_msgs:
 rgbd::rgbd(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
     : system(cfg, vocab_file_path, mask_img_path),
       color_sf_(it_, "camera/color/image_raw", 1),
-      depth_sf_(it_, "camera/depth/image_raw", 1),
-      sync_(SyncPolicy(10), color_sf_, depth_sf_) {
-    sync_.registerCallback(&rgbd::callback, this);
+      depth_sf_(it_, "camera/depth/image_raw", 1) {
+    use_exact_time_ = false;
+    private_nh_.param("use_exact_time", use_exact_time_, use_exact_time_);
+    if (use_exact_time_) {
+        exact_time_sync_ = std::make_shared<ExactTimeSyncPolicy::Sync>(2, color_sf_, depth_sf_);
+        exact_time_sync_->registerCallback(&rgbd::callback, this);
+    }
+    else {
+        approx_time_sync_ = std::make_shared<ApproximateTimeSyncPolicy::Sync>(10, color_sf_, depth_sf_);
+        approx_time_sync_->registerCallback(&rgbd::callback, this);
+    }
 }
 
 void rgbd::callback(const sensor_msgs::ImageConstPtr& color, const sensor_msgs::ImageConstPtr& depth) {

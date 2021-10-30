@@ -80,7 +80,6 @@ void tracking(const std::shared_ptr<openvslam::config>& cfg, const std::string& 
 #endif
 
     ros::Rate rate(50);
-    ros->setParams();
     while (ros::ok()) {
         ros::spinOnce();
         rate.sleep();

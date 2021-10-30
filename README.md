@@ -26,5 +26,8 @@
 
 - `odom_frame`
 - `map_frame`
+- `base_link`
+- `camera_frame`
 - `publish_tf`
 - `transform_tolerance`
+- `use_exact_time` (stereo, RGBD only)
