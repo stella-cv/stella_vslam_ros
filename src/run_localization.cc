@@ -91,7 +91,6 @@ void localization(const std::shared_ptr<openvslam::config>& cfg, const std::stri
 #endif
 
     rclcpp::Rate rate(50);
-    ros->setParams();
     while (rclcpp::ok()) {
         ros->exec_.spin_some();
         rate.sleep();

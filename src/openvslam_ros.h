@@ -10,7 +10,8 @@
 #include <image_transport/subscriber_filter.hpp>
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
-#include <message_filters/time_synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
+#include <message_filters/sync_policies/exact_time.h>
 #include <cv_bridge/cv_bridge.h>
 #include <nav_msgs/msg/odometry.hpp>
 
@@ -66,7 +67,11 @@ public:
 
     std::shared_ptr<openvslam::util::stereo_rectifier> rectifier_;
     message_filters::Subscriber<sensor_msgs::msg::Image> left_sf_, right_sf_;
-    message_filters::TimeSynchronizer<sensor_msgs::msg::Image, sensor_msgs::msg::Image> sync_;
+    using ApproximateTimeSyncPolicy = message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image, sensor_msgs::msg::Image>;
+    std::shared_ptr<ApproximateTimeSyncPolicy::Sync> approx_time_sync_;
+    using ExactTimeSyncPolicy = message_filters::sync_policies::ExactTime<sensor_msgs::msg::Image, sensor_msgs::msg::Image>;
+    std::shared_ptr<ExactTimeSyncPolicy::Sync> exact_time_sync_;
+    bool use_exact_time_;
 };
 
 class rgbd : public system {
@@ -75,7 +80,11 @@ public:
     void callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const sensor_msgs::msg::Image::ConstSharedPtr& depth);
 
     message_filters::Subscriber<sensor_msgs::msg::Image> color_sf_, depth_sf_;
-    message_filters::TimeSynchronizer<sensor_msgs::msg::Image, sensor_msgs::msg::Image> sync_;
+    using ApproximateTimeSyncPolicy = message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image, sensor_msgs::msg::Image>;
+    std::shared_ptr<ApproximateTimeSyncPolicy::Sync> approx_time_sync_;
+    using ExactTimeSyncPolicy = message_filters::sync_policies::ExactTime<sensor_msgs::msg::Image, sensor_msgs::msg::Image>;
+    std::shared_ptr<ExactTimeSyncPolicy::Sync> exact_time_sync_;
+    bool use_exact_time_;
 };
 
 } // namespace openvslam_ros
