@@ -163,7 +163,7 @@ mono::mono(const std::shared_ptr<openvslam::config>& cfg, const std::string& voc
 }
 void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
     if (camera_optical_frame_.empty()) {
-        camera_frame_ = msg->header.frame_id;
+        camera_optical_frame_ = msg->header.frame_id;
     }
     const rclcpp::Time tp_1 = node_->now();
     const double timestamp = tp_1.seconds();
@@ -194,7 +194,7 @@ stereo::stereo(const std::shared_ptr<openvslam::config>& cfg, const std::string&
 
 void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const sensor_msgs::msg::Image::ConstSharedPtr& right) {
     if (camera_optical_frame_.empty()) {
-        camera_frame_ = left->header.frame_id;
+        camera_optical_frame_ = left->header.frame_id;
     }
     auto leftcv = cv_bridge::toCvShare(left)->image;
     auto rightcv = cv_bridge::toCvShare(right)->image;
@@ -233,7 +233,7 @@ rgbd::rgbd(const std::shared_ptr<openvslam::config>& cfg, const std::string& voc
 
 void rgbd::callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const sensor_msgs::msg::Image::ConstSharedPtr& depth) {
     if (camera_optical_frame_.empty()) {
-        camera_frame_ = color->header.frame_id;
+        camera_optical_frame_ = color->header.frame_id;
     }
     auto colorcv = cv_bridge::toCvShare(color)->image;
     auto depthcv = cv_bridge::toCvShare(depth)->image;
