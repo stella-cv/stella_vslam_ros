@@ -27,10 +27,11 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& s
     Eigen::Matrix3d rot(cam_pose_wc.block<3, 3>(0, 0));
     Eigen::Translation3d trans(cam_pose_wc.block<3, 1>(0, 3));
     Eigen::Affine3d map_to_camera_affine(trans * rot);
-    Eigen::Matrix3d rot_ros_to_cv_map_frame;
-    rot_ros_to_cv_map_frame << 0, 0, 1,
-        -1, 0, 0,
-        0, -1, 0;
+    Eigen::AngleAxisd rot_ros_to_cv_map_frame(
+        (Eigen::Matrix3d() << 0, 0, 1,
+         -1, 0, 0,
+         0, -1, 0)
+            .finished());
 
     // Transform map frame from CV coordinate system to ROS coordinate system
     map_to_camera_affine.prerotate(rot_ros_to_cv_map_frame);
@@ -39,14 +40,14 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& s
     nav_msgs::Odometry pose_msg;
     pose_msg.header.stamp = stamp;
     pose_msg.header.frame_id = map_frame_;
-    pose_msg.child_frame_id = camera_link_;
-    pose_msg.pose.pose = tf2::toMsg(map_to_camera_affine);
+    pose_msg.child_frame_id = camera_frame_;
+    pose_msg.pose.pose = tf2::toMsg(map_to_camera_affine * rot_ros_to_cv_map_frame.inverse());
     pose_pub_.publish(pose_msg);
 
     // Send map->odom transform. Set publish_tf to false if not using TF
     if (publish_tf_) {
         try {
-            auto camera_to_odom = tf_->lookupTransform(camera_link_, odom_frame_, stamp, ros::Duration(0.0));
+            auto camera_to_odom = tf_->lookupTransform(camera_optical_frame_, odom_frame_, stamp, ros::Duration(0.0));
             Eigen::Affine3d camera_to_odom_affine = tf2::transformToEigen(camera_to_odom.transform);
 
             auto map_to_odom_msg = tf2::eigenToTransform(map_to_camera_affine * camera_to_odom_affine);
@@ -72,6 +73,9 @@ void system::setParams() {
     base_link_ = std::string("base_footprint");
     private_nh_.param("base_link", base_link_, base_link_);
 
+    camera_frame_ = std::string("camera_frame");
+    private_nh_.param("camera_frame", camera_frame_, camera_frame_);
+
     // Set publish_tf to false if not using TF
     publish_tf_ = true;
     private_nh_.param("publish_tf", publish_tf_, publish_tf_);
@@ -83,7 +87,7 @@ void system::setParams() {
 
 void system::init_pose_callback(
     const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
-    if (camera_link_.empty()) {
+    if (camera_optical_frame_.empty()) {
         ROS_ERROR("Camera link is not set: no images were received yet");
         return;
     }
@@ -120,7 +124,7 @@ void system::init_pose_callback(
     Eigen::Affine3d base_link_to_camera_affine;
     try {
         auto base_link_to_camera = tf_->lookupTransform(
-            base_link_, camera_link_, msg->header.stamp,
+            base_link_, camera_optical_frame_, msg->header.stamp,
             ros::Duration(0.0));
         base_link_to_camera_affine = tf2::transformToEigen(base_link_to_camera.transform);
     }
@@ -150,8 +154,8 @@ mono::mono(const std::shared_ptr<openvslam::config>& cfg, const std::string& voc
     sub_ = it_.subscribe("camera/image_raw", 1, &mono::callback, this);
 }
 void mono::callback(const sensor_msgs::ImageConstPtr& msg) {
-    if (camera_link_.empty()) {
-        camera_link_ = msg->header.frame_id;
+    if (camera_optical_frame_.empty()) {
+        camera_optical_frame_ = msg->header.frame_id;
     }
     const auto tp_1 = std::chrono::steady_clock::now();
     const auto timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(tp_1 - tp_0_).count();
@@ -180,8 +184,8 @@ stereo::stereo(const std::shared_ptr<openvslam::config>& cfg, const std::string&
 }
 
 void stereo::callback(const sensor_msgs::ImageConstPtr& left, const sensor_msgs::ImageConstPtr& right) {
-    if (camera_link_.empty()) {
-        camera_link_ = left->header.frame_id;
+    if (camera_optical_frame_.empty()) {
+        camera_optical_frame_ = left->header.frame_id;
     }
     auto leftcv = cv_bridge::toCvShare(left)->image;
     auto rightcv = cv_bridge::toCvShare(right)->image;
@@ -218,8 +222,8 @@ rgbd::rgbd(const std::shared_ptr<openvslam::config>& cfg, const std::string& voc
 }
 
 void rgbd::callback(const sensor_msgs::ImageConstPtr& color, const sensor_msgs::ImageConstPtr& depth) {
-    if (camera_link_.empty()) {
-        camera_link_ = color->header.frame_id;
+    if (camera_optical_frame_.empty()) {
+        camera_optical_frame_ = color->header.frame_id;
     }
     auto colorcv = cv_bridge::toCvShare(color)->image;
     auto depthcv = cv_bridge::toCvShare(depth)->image;
