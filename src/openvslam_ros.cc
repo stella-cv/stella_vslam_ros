@@ -24,6 +24,7 @@ system::system(const std::shared_ptr<openvslam::config>& cfg, const std::string&
         "/initialpose", 1,
         std::bind(&system::init_pose_callback,
                   this, std::placeholders::_1));
+    setParams();
 }
 
 void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time& stamp) {
@@ -187,9 +188,17 @@ stereo::stereo(const std::shared_ptr<openvslam::config>& cfg, const std::string&
     : system(cfg, vocab_file_path, mask_img_path),
       rectifier_(rectify ? std::make_shared<openvslam::util::stereo_rectifier>(cfg) : nullptr),
       left_sf_(node_, "camera/left/image_raw"),
-      right_sf_(node_, "camera/right/image_raw"),
-      sync_(left_sf_, right_sf_, 10) {
-    sync_.registerCallback(&stereo::callback, this);
+      right_sf_(node_, "camera/right/image_raw") {
+    use_exact_time_ = false;
+    use_exact_time_ = node_->declare_parameter("use_exact_time", use_exact_time_);
+    if (use_exact_time_) {
+        exact_time_sync_ = std::make_shared<ExactTimeSyncPolicy::Sync>(2, left_sf_, right_sf_);
+        exact_time_sync_->registerCallback(&stereo::callback, this);
+    }
+    else {
+        approx_time_sync_ = std::make_shared<ApproximateTimeSyncPolicy::Sync>(10, left_sf_, right_sf_);
+        approx_time_sync_->registerCallback(&stereo::callback, this);
+    }
 }
 
 void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const sensor_msgs::msg::Image::ConstSharedPtr& right) {
@@ -226,9 +235,17 @@ void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const
 rgbd::rgbd(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
     : system(cfg, vocab_file_path, mask_img_path),
       color_sf_(node_, "camera/color/image_raw"),
-      depth_sf_(node_, "camera/depth/image_raw"),
-      sync_(color_sf_, depth_sf_, 10) {
-    sync_.registerCallback(&rgbd::callback, this);
+      depth_sf_(node_, "camera/depth/image_raw") {
+    use_exact_time_ = false;
+    use_exact_time_ = node_->declare_parameter("use_exact_time", use_exact_time_);
+    if (use_exact_time_) {
+        exact_time_sync_ = std::make_shared<ExactTimeSyncPolicy::Sync>(2, color_sf_, depth_sf_);
+        exact_time_sync_->registerCallback(&rgbd::callback, this);
+    }
+    else {
+        approx_time_sync_ = std::make_shared<ApproximateTimeSyncPolicy::Sync>(10, color_sf_, depth_sf_);
+        approx_time_sync_->registerCallback(&rgbd::callback, this);
+    }
 }
 
 void rgbd::callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const sensor_msgs::msg::Image::ConstSharedPtr& depth) {
