@@ -50,8 +50,8 @@ jobs:
         run: |
           source /ros_ws/devel/setup.bash
           roscore&
-          rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link&
-          rosrun tf2_ros static_transform_publisher 0 0 0 -1.57 0.0 -1.57 base_link cam0&
+          rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_footprint&
+          rosrun tf2_ros static_transform_publisher 0 0 0 -1.57 0.0 -1.57 base_footprint cam0&
           rosrun openvslam_ros run_slam -v /datasets/orb_vocab/orb_vocab.fbow -c openvslam/example/euroc/EuRoC_mono.yaml --map-db map_mono.msg /camera/image_raw:=/cam0/image_raw&
           sleep 1
           rosbag play /datasets/EuRoC/MH_04_difficult.bag
@@ -64,8 +64,8 @@ jobs:
         run: |
           source /ros_ws/devel/setup.bash
           roscore&
-          rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link&
-          rosrun tf2_ros static_transform_publisher 0 0 0 -1.57 0.0 -1.57 base_link cam0&
+          rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_footprint&
+          rosrun tf2_ros static_transform_publisher 0 0 0 -1.57 0.0 -1.57 base_footprint cam0&
           rosrun openvslam_ros run_slam -r -v /datasets/orb_vocab/orb_vocab.fbow -c openvslam/example/euroc/EuRoC_stereo.yaml --map-db map_stereo.msg /camera/left/image_raw:=/cam0/image_raw /camera/right/image_raw:=/cam1/image_raw&
           sleep 1
           rosbag play /datasets/EuRoC/MH_04_difficult.bag
@@ -78,8 +78,8 @@ jobs:
         run: |
           source /ros_ws/devel/setup.bash
           roscore&
-          rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link&
-          rosrun tf2_ros static_transform_publisher 0 0 0 -1.57 0.0 -1.57 base_link cam0&
+          rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_footprint&
+          rosrun tf2_ros static_transform_publisher 0 0 0 -1.57 0.0 -1.57 base_footprint cam0&
           rosrun openvslam_ros run_localization -v /datasets/orb_vocab/orb_vocab.fbow -c openvslam/example/euroc/EuRoC_mono.yaml --map-db map_mono.msg /camera/image_raw:=/cam0/image_raw&
           sleep 5
           rosbag play /datasets/EuRoC/MH_04_difficult.bag
