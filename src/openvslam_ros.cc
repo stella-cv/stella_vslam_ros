@@ -1,11 +1,15 @@
 #include <openvslam_ros.h>
 #include <openvslam/publish/map_publisher.h>
+#include <openvslam/data/landmark.h>
 
 #include <chrono>
 
 #include <tf2_eigen/tf2_eigen.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <pcl_ros/point_cloud.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <sensor_msgs/PointCloud2.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <Eigen/Geometry>
@@ -22,6 +26,10 @@ system::system(const std::shared_ptr<openvslam::config>& cfg, const std::string&
     init_pose_sub_ = nh_.subscribe(
         "/initialpose", 1, &system::init_pose_callback, this);
     setParams();
+    rot_ros_to_cv_map_frame_ = (Eigen::Matrix3d() << 0, 0, 1,
+                                -1, 0, 0,
+                                0, -1, 0)
+                                   .finished();
 }
 
 void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& stamp) {
@@ -29,21 +37,16 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& s
     Eigen::Matrix3d rot(cam_pose_wc.block<3, 3>(0, 0));
     Eigen::Translation3d trans(cam_pose_wc.block<3, 1>(0, 3));
     Eigen::Affine3d map_to_camera_affine(trans * rot);
-    Eigen::AngleAxisd rot_ros_to_cv_map_frame(
-        (Eigen::Matrix3d() << 0, 0, 1,
-         -1, 0, 0,
-         0, -1, 0)
-            .finished());
 
     // Transform map frame from CV coordinate system to ROS coordinate system
-    map_to_camera_affine.prerotate(rot_ros_to_cv_map_frame);
+    map_to_camera_affine.prerotate(rot_ros_to_cv_map_frame_);
 
     // Create odometry message and update it with current camera pose
     nav_msgs::Odometry pose_msg;
     pose_msg.header.stamp = stamp;
     pose_msg.header.frame_id = map_frame_;
     pose_msg.child_frame_id = camera_frame_;
-    pose_msg.pose.pose = tf2::toMsg(map_to_camera_affine * rot_ros_to_cv_map_frame.inverse());
+    pose_msg.pose.pose = tf2::toMsg(map_to_camera_affine * rot_ros_to_cv_map_frame_.inverse());
     pose_pub_.publish(pose_msg);
 
     // Send map->odom transform. Set publish_tf to false if not using TF
@@ -63,23 +66,25 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& s
             ROS_ERROR("Transform failed: %s", ex.what());
         }
     }
-    if (publish_pointcloud_) {
-        std::vector<openvslam::data::landmark*> landmarks;
-        std::set<openvslam::data::landmark*> local_landmarks;
-        SLAM_.get_map_publisher()->get_landmarks(landmarks, local_landmarks);
-        pcl::PointCloud<pcl::PointXYZ> points;
-        for (const auto lm : landmarks) {
-            if (!lm || lm->will_be_erased()) {
-                continue;
-            }
-            const openvslam::Vec3_t pos_w = rot_ros_to_cv_map_frame * lm->get_pos_in_world();
-            points.push_back(pcl::PointXYZ(pos_w.z(), -pos_w.x(), -pos_w.y()));
+}
+
+void system::publish_pointcloud(const ros::Time& stamp) {
+    std::vector<openvslam::data::landmark*> landmarks;
+    std::set<openvslam::data::landmark*> local_landmarks;
+    SLAM_.get_map_publisher()->get_landmarks(landmarks, local_landmarks);
+    pcl::PointCloud<pcl::PointXYZ> points;
+    for (const auto lm : landmarks) {
+        if (!lm || lm->will_be_erased()) {
+            continue;
         }
-        sensor_msgs::PointCloud2 pcout;
-        pcl::toROSMsg(points, pcout);
-        pcout.header.frame_id = map_frame_;
-        pc_pub_.publish(pcout);
+        const Eigen::Vector3d pos_w = rot_ros_to_cv_map_frame_ * lm->get_pos_in_world();
+        points.push_back(pcl::PointXYZ(pos_w.x(), pos_w.y(), pos_w.z()));
     }
+    sensor_msgs::PointCloud2 pcout;
+    pcl::toROSMsg(points, pcout);
+    pcout.header.frame_id = map_frame_;
+    pcout.header.stamp = stamp;
+    pc_pub_.publish(pcout);
 }
 
 void system::setParams() {
@@ -126,11 +131,6 @@ void system::init_pose_callback(
         msg->pose.pose.orientation.z);
     Eigen::Affine3d initialpose_affine(trans * rot_q);
 
-    Eigen::Matrix3d rot_cv_to_ros_map_frame;
-    rot_cv_to_ros_map_frame << 0, -1, 0,
-        0, 0, -1,
-        1, 0, 0;
-
     Eigen::Affine3d map_to_initialpose_frame_affine;
     try {
         auto map_to_initialpose_frame = tf_->lookupTransform(
@@ -163,7 +163,7 @@ void system::init_pose_callback(
     //   base_link_to_camera_affine: T(base_link -> camera_link)
     // The flow of the transformation is as follows:
     //   map_cv -> map -> `msg->header.frame_id` -> base_link -> camera_link
-    Eigen::Matrix4d cam_pose_cv = (rot_cv_to_ros_map_frame * map_to_initialpose_frame_affine
+    Eigen::Matrix4d cam_pose_cv = (rot_ros_to_cv_map_frame_.inverse() * map_to_initialpose_frame_affine
                                    * initialpose_affine * base_link_to_camera_affine)
                                       .matrix();
 
@@ -193,6 +193,10 @@ void mono::callback(const sensor_msgs::ImageConstPtr& msg) {
 
     if (cam_pose_wc) {
         publish_pose(*cam_pose_wc, msg->header.stamp);
+    }
+
+    if (publish_pointcloud_) {
+        publish_pointcloud(msg->header.stamp);
     }
 }
 
@@ -242,6 +246,10 @@ void stereo::callback(const sensor_msgs::ImageConstPtr& left, const sensor_msgs:
     if (cam_pose_wc) {
         publish_pose(*cam_pose_wc, left->header.stamp);
     }
+
+    if (publish_pointcloud_) {
+        publish_pointcloud(left->header.stamp);
+    }
 }
 
 rgbd::rgbd(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
@@ -286,6 +294,10 @@ void rgbd::callback(const sensor_msgs::ImageConstPtr& color, const sensor_msgs::
 
     if (cam_pose_wc) {
         publish_pose(*cam_pose_wc, color->header.stamp);
+    }
+
+    if (publish_pointcloud_) {
+        publish_pointcloud(color->header.stamp);
     }
 }
 } // namespace openvslam_ros
