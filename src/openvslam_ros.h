@@ -4,6 +4,8 @@
 #include <openvslam/system.h>
 #include <openvslam/config.h>
 #include <openvslam/util/stereo_rectifier.h>
+#include "openvslam/data/landmark.h"
+#include "openvslam/publish/map_publisher.h"
 
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
@@ -21,6 +23,9 @@
 #include <opencv2/core/core.hpp>
 #include <sensor_msgs/Image.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <pcl_ros/point_cloud.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <sensor_msgs/PointCloud2.h>
 
 namespace openvslam_ros {
 class system {
@@ -37,13 +42,14 @@ public:
     cv::Mat mask_;
     std::vector<double> track_times_;
     ros::Publisher pose_pub_;
+    ros::Publisher pc_pub_;
     ros::Subscriber init_pose_sub_;
     std::shared_ptr<tf2_ros::TransformBroadcaster> map_to_odom_broadcaster_;
     std::string odom_frame_, map_frame_, base_link_;
     std::string camera_frame_, camera_optical_frame_;
     std::unique_ptr<tf2_ros::Buffer> tf_;
     std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
-    bool publish_tf_;
+    bool publish_tf_, publish_pointcloud_;
     double transform_tolerance_;
 
 private:

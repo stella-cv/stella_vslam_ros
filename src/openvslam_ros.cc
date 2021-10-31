@@ -15,6 +15,7 @@ system::system(const std::shared_ptr<openvslam::config>& cfg, const std::string&
     : SLAM_(cfg, vocab_file_path), cfg_(cfg), private_nh_("~"), it_(nh_), tp_0_(std::chrono::steady_clock::now()),
       mask_(mask_img_path.empty() ? cv::Mat{} : cv::imread(mask_img_path, cv::IMREAD_GRAYSCALE)),
       pose_pub_(private_nh_.advertise<nav_msgs::Odometry>("camera_pose", 1)),
+      pc_pub_(private_nh_.advertise<sensor_msgs::PointCloud2>("pointcloud", 1)),
       map_to_odom_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>()),
       tf_(std::make_unique<tf2_ros::Buffer>()),
       transform_listener_(std::make_shared<tf2_ros::TransformListener>(*tf_)) {
@@ -62,6 +63,23 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& s
             ROS_ERROR("Transform failed: %s", ex.what());
         }
     }
+    if (publish_pointcloud_) {
+        std::vector<openvslam::data::landmark*> landmarks;
+        std::set<openvslam::data::landmark*> local_landmarks;
+        SLAM_.get_map_publisher()->get_landmarks(landmarks, local_landmarks);
+        pcl::PointCloud<pcl::PointXYZ> points;
+        for (const auto lm : landmarks) {
+            if (!lm || lm->will_be_erased()) {
+                continue;
+            }
+            const openvslam::Vec3_t pos_w = rot_ros_to_cv_map_frame * lm->get_pos_in_world();
+            points.push_back(pcl::PointXYZ(pos_w.z(), -pos_w.x(), -pos_w.y()));
+        }
+        sensor_msgs::PointCloud2 pcout;
+        pcl::toROSMsg(points, pcout);
+        pcout.header.frame_id = map_frame_;
+        pc_pub_.publish(pcout);
+    }
 }
 
 void system::setParams() {
@@ -80,6 +98,10 @@ void system::setParams() {
     // Set publish_tf to false if not using TF
     publish_tf_ = true;
     private_nh_.param("publish_tf", publish_tf_, publish_tf_);
+
+    // Set publish_pointcloud_ to true if publish pointcloud
+    publish_pointcloud_ = false;
+    private_nh_.param("publish_pointcloud", publish_pointcloud_, publish_pointcloud_);
 
     // Publish pose's timestamp in the future
     transform_tolerance_ = 0.5;
