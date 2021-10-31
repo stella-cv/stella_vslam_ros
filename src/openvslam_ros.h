@@ -21,6 +21,7 @@
 #include <opencv2/core/core.hpp>
 #include <sensor_msgs/Image.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <geometry_msgs/PoseArray.h>
 
 namespace openvslam_ros {
 class system {
@@ -28,6 +29,7 @@ public:
     system(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path);
     void publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& stamp);
     void publish_pointcloud(const ros::Time& stamp);
+    void publish_keyframes(const ros::Time& stamp);
     void setParams();
     openvslam::system SLAM_;
     std::shared_ptr<openvslam::config> cfg_;
@@ -39,6 +41,8 @@ public:
     std::vector<double> track_times_;
     ros::Publisher pose_pub_;
     ros::Publisher pc_pub_;
+    ros::Publisher keyframes_pub_;
+    ros::Publisher keyframes_2d_pub_;
     ros::Subscriber init_pose_sub_;
     std::shared_ptr<tf2_ros::TransformBroadcaster> map_to_odom_broadcaster_;
     std::string odom_frame_, map_frame_, base_link_;
@@ -47,6 +51,7 @@ public:
     std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
     bool publish_tf_;
     bool publish_pointcloud_;
+    bool publish_keyframes_;
     double transform_tolerance_;
 
 private:

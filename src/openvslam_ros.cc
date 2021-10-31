@@ -1,6 +1,7 @@
 #include <openvslam_ros.h>
 #include <openvslam/publish/map_publisher.h>
 #include <openvslam/data/landmark.h>
+#include <openvslam/data/keyframe.h>
 
 #include <chrono>
 
@@ -20,6 +21,8 @@ system::system(const std::shared_ptr<openvslam::config>& cfg, const std::string&
       mask_(mask_img_path.empty() ? cv::Mat{} : cv::imread(mask_img_path, cv::IMREAD_GRAYSCALE)),
       pose_pub_(private_nh_.advertise<nav_msgs::Odometry>("camera_pose", 1)),
       pc_pub_(private_nh_.advertise<sensor_msgs::PointCloud2>("pointcloud", 1)),
+      keyframes_pub_(private_nh_.advertise<geometry_msgs::PoseArray>("keyframes", 1)),
+      keyframes_2d_pub_(private_nh_.advertise<geometry_msgs::PoseArray>("keyframes_2d", 1)),
       map_to_odom_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>()),
       tf_(std::make_unique<tf2_ros::Buffer>()),
       transform_listener_(std::make_shared<tf2_ros::TransformListener>(*tf_)) {
@@ -87,6 +90,33 @@ void system::publish_pointcloud(const ros::Time& stamp) {
     pc_pub_.publish(pcout);
 }
 
+void system::publish_keyframes(const ros::Time& stamp) {
+    Eigen::Vector3d normal_vector;
+    normal_vector << 0, 0, 1;
+    geometry_msgs::PoseArray keyframes_msg;
+    geometry_msgs::PoseArray keyframes_2d_msg;
+    keyframes_msg.header.stamp = stamp;
+    keyframes_msg.header.frame_id = map_frame_;
+    keyframes_2d_msg.header = keyframes_msg.header;
+    std::vector<openvslam::data::keyframe*> all_keyfrms;
+    SLAM_.get_map_publisher()->get_keyframes(all_keyfrms);
+    for (const auto keyfrm : all_keyfrms) {
+        if (!keyfrm || keyfrm->will_be_erased()) {
+            continue;
+        }
+        Eigen::Matrix4d cam_pose_wc = keyfrm->get_cam_pose_inv();
+        Eigen::Matrix3d rot(cam_pose_wc.block<3, 3>(0, 0));
+        Eigen::Translation3d trans(cam_pose_wc.block<3, 1>(0, 3));
+        Eigen::Affine3d map_to_camera_affine(trans * rot);
+        Eigen::Affine3d pose_affine = rot_ros_to_cv_map_frame_ * map_to_camera_affine * rot_ros_to_cv_map_frame_.inverse();
+        keyframes_msg.poses.push_back(tf2::toMsg(pose_affine));
+        pose_affine.translation() = pose_affine.translation() - pose_affine.translation().dot(normal_vector) * normal_vector;
+        keyframes_2d_msg.poses.push_back(tf2::toMsg(pose_affine));
+    }
+    keyframes_pub_.publish(keyframes_msg);
+    keyframes_2d_pub_.publish(keyframes_2d_msg);
+}
+
 void system::setParams() {
     odom_frame_ = std::string("odom");
     private_nh_.param("odom_frame", odom_frame_, odom_frame_);
@@ -107,6 +137,9 @@ void system::setParams() {
     // Set publish_pointcloud_ to true if publish pointcloud
     publish_pointcloud_ = false;
     private_nh_.param("publish_pointcloud", publish_pointcloud_, publish_pointcloud_);
+
+    publish_keyframes_ = true;
+    private_nh_.param("publish_keyframes", publish_keyframes_, publish_keyframes_);
 
     // Publish pose's timestamp in the future
     transform_tolerance_ = 0.5;
@@ -198,6 +231,9 @@ void mono::callback(const sensor_msgs::ImageConstPtr& msg) {
     if (publish_pointcloud_) {
         publish_pointcloud(msg->header.stamp);
     }
+    if (publish_keyframes_) {
+        publish_keyframes(msg->header.stamp);
+    }
 }
 
 stereo::stereo(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path,
@@ -250,6 +286,9 @@ void stereo::callback(const sensor_msgs::ImageConstPtr& left, const sensor_msgs:
     if (publish_pointcloud_) {
         publish_pointcloud(left->header.stamp);
     }
+    if (publish_keyframes_) {
+        publish_keyframes(left->header.stamp);
+    }
 }
 
 rgbd::rgbd(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
@@ -298,6 +337,9 @@ void rgbd::callback(const sensor_msgs::ImageConstPtr& color, const sensor_msgs::
 
     if (publish_pointcloud_) {
         publish_pointcloud(color->header.stamp);
+    }
+    if (publish_keyframes_) {
+        publish_keyframes(color->header.stamp);
     }
 }
 } // namespace openvslam_ros
