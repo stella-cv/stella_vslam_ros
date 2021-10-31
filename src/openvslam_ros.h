@@ -4,8 +4,6 @@
 #include <openvslam/system.h>
 #include <openvslam/config.h>
 #include <openvslam/util/stereo_rectifier.h>
-#include "openvslam/data/landmark.h"
-#include "openvslam/publish/map_publisher.h"
 
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
@@ -23,15 +21,13 @@
 #include <opencv2/core/core.hpp>
 #include <sensor_msgs/Image.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <pcl_ros/point_cloud.h>
-#include <pcl_conversions/pcl_conversions.h>
-#include <sensor_msgs/PointCloud2.h>
 
 namespace openvslam_ros {
 class system {
 public:
     system(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path);
     void publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& stamp);
+    void publish_pointcloud(const ros::Time& stamp);
     void setParams();
     openvslam::system SLAM_;
     std::shared_ptr<openvslam::config> cfg_;
@@ -49,11 +45,14 @@ public:
     std::string camera_frame_, camera_optical_frame_;
     std::unique_ptr<tf2_ros::Buffer> tf_;
     std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
-    bool publish_tf_, publish_pointcloud_;
+    bool publish_tf_;
+    bool publish_pointcloud_;
     double transform_tolerance_;
 
 private:
     void init_pose_callback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
+
+    Eigen::AngleAxisd rot_ros_to_cv_map_frame_;
 };
 
 class mono : public system {

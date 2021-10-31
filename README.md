@@ -21,6 +21,8 @@
 ## Published topics
 
 - `~/camera_pose`
+- `~/pointcloud`
+- `/tf`
 
 ## Parameters
 
@@ -29,5 +31,6 @@
 - `base_link`
 - `camera_frame`
 - `publish_tf`
+- `publish_pointcloud`
 - `transform_tolerance`
 - `use_exact_time` (stereo, RGBD only)
