@@ -200,7 +200,8 @@ void system::init_pose_callback(
                                    * initialpose_affine * base_link_to_camera_affine)
                                       .matrix();
 
-    if (!SLAM_.update_pose(cam_pose_cv)) {
+    const Eigen::Vector3d normal_vector = (Eigen::Vector3d() << 0., 1., 0.).finished();
+    if (!SLAM_.relocalize_by_pose_2d(cam_pose_cv, normal_vector)) {
         ROS_ERROR("Can not set initial pose");
     }
 }
