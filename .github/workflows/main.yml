@@ -27,6 +27,8 @@ jobs:
         shell: bash
     container:
       image: ghcr.io/ymd-stella/openvslam-community/openvslam-ros2:galactic
+      env:
+        ROS_LOG_DIR: ${GITHUB_WORKSPACE}/.ros
     steps:
       - uses: actions/checkout@v2
       - name: build ros2 packages
@@ -81,6 +83,8 @@ jobs:
         shell: bash
     container:
       image: ghcr.io/ymd-stella/openvslam-community/ros:galactic-ros-base
+      env:
+        ROS_LOG_DIR: ${GITHUB_WORKSPACE}/.ros
     steps:
       - name: build ros2 packages
         run: |
