@@ -105,6 +105,10 @@ void localization(const std::shared_ptr<openvslam::config>& cfg, const std::stri
     // shutdown the SLAM process
     SLAM.shutdown();
 
+    if (mapping) {
+        SLAM.save_map_database(map_db_path);
+    }
+
     auto& track_times = ros->track_times_;
     if (track_times.size()) {
         std::sort(track_times.begin(), track_times.end());
