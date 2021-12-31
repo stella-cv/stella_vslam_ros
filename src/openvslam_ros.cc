@@ -72,8 +72,8 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& s
 }
 
 void system::publish_pointcloud(const ros::Time& stamp) {
-    std::vector<openvslam::data::landmark*> landmarks;
-    std::set<openvslam::data::landmark*> local_landmarks;
+    std::vector<std::shared_ptr<openvslam::data::landmark>> landmarks;
+    std::set<std::shared_ptr<openvslam::data::landmark>> local_landmarks;
     SLAM_.get_map_publisher()->get_landmarks(landmarks, local_landmarks);
     pcl::PointCloud<pcl::PointXYZ> points;
     for (const auto lm : landmarks) {
@@ -98,7 +98,7 @@ void system::publish_keyframes(const ros::Time& stamp) {
     keyframes_msg.header.stamp = stamp;
     keyframes_msg.header.frame_id = map_frame_;
     keyframes_2d_msg.header = keyframes_msg.header;
-    std::vector<openvslam::data::keyframe*> all_keyfrms;
+    std::vector<std::shared_ptr<openvslam::data::keyframe>> all_keyfrms;
     SLAM_.get_map_publisher()->get_keyframes(all_keyfrms);
     for (const auto keyfrm : all_keyfrms) {
         if (!keyfrm || keyfrm->will_be_erased()) {
