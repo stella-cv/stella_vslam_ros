@@ -1,0 +1,103 @@
+FROM ros:galactic
+ENV DEBIAN_FRONTEND noninteractive
+
+# install dependencies via apt
+ENV DEBCONF_NOWARNINGS yes
+RUN set -x && \
+  apt-get update -y -qq && \
+  apt-get upgrade -y -qq --no-install-recommends && \
+  : "basic dependencies" && \
+  apt-get install -y -qq \
+    build-essential \
+    pkg-config \
+    cmake \
+    git \
+    wget \
+    curl \
+    tar \
+    unzip && \
+  : "g2o dependencies" && \
+  apt-get install -y -qq \
+    libgoogle-glog-dev \
+    libatlas-base-dev \
+    libsuitesparse-dev && \
+  : "other dependencies" && \
+  apt-get install -y -qq \
+    libgoogle-glog-dev \
+    libyaml-cpp-dev \ 
+    libopencv-dev \
+    libeigen3-dev && \
+  : "remove cache" && \
+  apt-get autoremove -y -qq && \
+  rm -rf /var/lib/apt/lists/*
+
+ARG CMAKE_INSTALL_PREFIX=/usr/local
+ARG NUM_THREADS=1
+
+ENV CPATH=${CMAKE_INSTALL_PREFIX}/include:${CPATH}
+ENV C_INCLUDE_PATH=${CMAKE_INSTALL_PREFIX}/include:${C_INCLUDE_PATH}
+ENV CPLUS_INCLUDE_PATH=${CMAKE_INSTALL_PREFIX}/include:${CPLUS_INCLUDE_PATH}
+ENV LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib:${LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib:${LD_LIBRARY_PATH}
+
+ENV NVIDIA_VISIBLE_DEVICES ${NVIDIA_VISIBLE_DEVICES:-all}
+ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
+
+# OpenVSLAM
+RUN set -x && \
+  : "OpenVSLAM dependencies" && \
+  apt-get update -y -qq && \
+  apt-get install -y -qq \
+    ros-${ROS_DISTRO}-libg2o && \
+  : "remove cache" && \
+  apt-get autoremove -y -qq && \
+  rm -rf /var/lib/apt/lists/*
+
+RUN set -x && \
+  git clone --depth 1 https://github.com/OpenVSLAM-Community/openvslam.git && \
+  cd openvslam && \
+  git submodule update -i --recursive && \
+  mkdir -p build && \
+  cd build && \
+  CMAKE_PREFIX_PATH=/opt/ros/${ROS_DISTRO}/lib/cmake cmake \
+    -DUSE_PANGOLIN_VIEWER=OFF \
+    -DUSE_SOCKET_PUBLISHER=OFF \
+    -DUSE_STACK_TRACE_LOGGER=ON \
+    .. && \
+  make -j${NUM_THREADS} && \
+  make install && \
+  rm -rf CMakeCache.txt CMakeFiles Makefile cmake_install.cmake example src && \
+  chmod -R 777 ./*
+
+# ROS2
+RUN set -x && \
+  apt-get update -y -qq && \
+  : "install ROS2 packages" && \
+  apt-get install -y -qq \
+    ros-${ROS_DISTRO}-image-transport \
+    ros-${ROS_DISTRO}-cv-bridge \
+    python3-pip \
+    python3-colcon-common-extensions && \
+  pip3 install -U \
+    argcomplete && \
+  : "remove cache" && \
+  apt-get autoremove -y -qq && \
+  rm -rf /var/lib/apt/lists/*
+
+WORKDIR /ros2_ws
+COPY . /ros2_ws/src/openvslam_ros
+
+RUN set -x && \
+  : "build ROS2 packages" && \
+  bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash; \
+  colcon build --parallel-workers ${NUM_THREADS} --cmake-args \
+    -DUSE_PANGOLIN_VIEWER=OFF \
+    -DUSE_SOCKET_PUBLISHER=OFF \
+    -DUSE_STACK_TRACE_LOGGER=ON"
+
+RUN set -x && \
+  sh -c "echo '#'\!'/bin/bash\nset -e\nsource /opt/ros/${ROS_DISTRO}/setup.bash\nsource /ros2_ws/install/setup.bash\nexec \"\$@\"' > /ros_entrypoint.sh" && \
+  chmod u+x /ros_entrypoint.sh
+
+ENTRYPOINT ["/ros_entrypoint.sh"]
+CMD ["bash"]
