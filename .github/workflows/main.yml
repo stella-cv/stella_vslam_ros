@@ -36,7 +36,7 @@ jobs:
           mkdir -p /ros_ws/src
           cp -r . /ros_ws/src/openvslam_ros
           cd /ros_ws/src
-          git clone --depth 1 https://github.com/OpenVSLAM-Community/openvslam.git
+          git clone -b main --depth 1 https://github.com/OpenVSLAM-Community/openvslam.git
           cd openvslam
           git submodule update -i --recursive
           cd ../..
