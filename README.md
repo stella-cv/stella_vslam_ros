@@ -1,6 +1,6 @@
-# openvslam_ros
+# stella_vslam_ros
 
-[OpenVSLAM](https://github.com/OpenVSLAM-Community/openvslam)'s ROS package.
+[stella_vslam](https://github.com/stella-cv/stella_vslam)'s ROS package.
 
 ## Subscribed topics
 

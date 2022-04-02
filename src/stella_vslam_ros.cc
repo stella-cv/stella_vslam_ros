@@ -1,7 +1,7 @@
-#include <openvslam_ros.h>
-#include <openvslam/publish/map_publisher.h>
-#include <openvslam/data/landmark.h>
-#include <openvslam/data/keyframe.h>
+#include <stella_vslam_ros.h>
+#include <stella_vslam/publish/map_publisher.h>
+#include <stella_vslam/data/landmark.h>
+#include <stella_vslam/data/keyframe.h>
 
 #include <chrono>
 
@@ -15,8 +15,8 @@
 #include <opencv2/imgcodecs.hpp>
 #include <Eigen/Geometry>
 
-namespace openvslam_ros {
-system::system(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
+namespace stella_vslam_ros {
+system::system(const std::shared_ptr<stella_vslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
     : SLAM_(cfg, vocab_file_path), cfg_(cfg), private_nh_("~"), it_(nh_), tp_0_(std::chrono::steady_clock::now()),
       mask_(mask_img_path.empty() ? cv::Mat{} : cv::imread(mask_img_path, cv::IMREAD_GRAYSCALE)),
       pose_pub_(private_nh_.advertise<nav_msgs::Odometry>("camera_pose", 1)),
@@ -72,8 +72,8 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& s
 }
 
 void system::publish_pointcloud(const ros::Time& stamp) {
-    std::vector<std::shared_ptr<openvslam::data::landmark>> landmarks;
-    std::set<std::shared_ptr<openvslam::data::landmark>> local_landmarks;
+    std::vector<std::shared_ptr<stella_vslam::data::landmark>> landmarks;
+    std::set<std::shared_ptr<stella_vslam::data::landmark>> local_landmarks;
     SLAM_.get_map_publisher()->get_landmarks(landmarks, local_landmarks);
     pcl::PointCloud<pcl::PointXYZ> points;
     for (const auto lm : landmarks) {
@@ -98,7 +98,7 @@ void system::publish_keyframes(const ros::Time& stamp) {
     keyframes_msg.header.stamp = stamp;
     keyframes_msg.header.frame_id = map_frame_;
     keyframes_2d_msg.header = keyframes_msg.header;
-    std::vector<std::shared_ptr<openvslam::data::keyframe>> all_keyfrms;
+    std::vector<std::shared_ptr<stella_vslam::data::keyframe>> all_keyfrms;
     SLAM_.get_map_publisher()->get_keyframes(all_keyfrms);
     for (const auto keyfrm : all_keyfrms) {
         if (!keyfrm || keyfrm->will_be_erased()) {
@@ -206,7 +206,7 @@ void system::init_pose_callback(
     }
 }
 
-mono::mono(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
+mono::mono(const std::shared_ptr<stella_vslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
     : system(cfg, vocab_file_path, mask_img_path) {
     sub_ = it_.subscribe("camera/image_raw", 1, &mono::callback, this);
 }
@@ -237,10 +237,10 @@ void mono::callback(const sensor_msgs::ImageConstPtr& msg) {
     }
 }
 
-stereo::stereo(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path,
+stereo::stereo(const std::shared_ptr<stella_vslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path,
                const bool rectify)
     : system(cfg, vocab_file_path, mask_img_path),
-      rectifier_(rectify ? std::make_shared<openvslam::util::stereo_rectifier>(cfg) : nullptr),
+      rectifier_(rectify ? std::make_shared<stella_vslam::util::stereo_rectifier>(cfg) : nullptr),
       left_sf_(it_, "camera/left/image_raw", 1),
       right_sf_(it_, "camera/right/image_raw", 1) {
     use_exact_time_ = false;
@@ -292,7 +292,7 @@ void stereo::callback(const sensor_msgs::ImageConstPtr& left, const sensor_msgs:
     }
 }
 
-rgbd::rgbd(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
+rgbd::rgbd(const std::shared_ptr<stella_vslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
     : system(cfg, vocab_file_path, mask_img_path),
       color_sf_(it_, "camera/color/image_raw", 1),
       depth_sf_(it_, "camera/depth/image_raw", 1) {
@@ -343,4 +343,4 @@ void rgbd::callback(const sensor_msgs::ImageConstPtr& color, const sensor_msgs::
         publish_keyframes(color->header.stamp);
     }
 }
-} // namespace openvslam_ros
+} // namespace stella_vslam_ros

@@ -84,9 +84,9 @@ RUN set -x && \
   rm -rf *
 ENV Pangolin_DIR=${CMAKE_INSTALL_PREFIX}/lib/cmake/Pangolin
 
-# OpenVSLAM
+# stella_vslam
 RUN set -x && \
-  : "OpenVSLAM dependencies" && \
+  : "stella_vslam dependencies" && \
   apt-get update -y -qq && \
   apt-get install -y -qq \
     ros-${ROS_DISTRO}-libg2o && \
@@ -95,8 +95,8 @@ RUN set -x && \
   rm -rf /var/lib/apt/lists/*
 
 RUN set -x && \
-  git clone --depth 1 https://github.com/OpenVSLAM-Community/openvslam.git && \
-  cd openvslam && \
+  git clone --depth 1 https://github.com/stella-cv/stella_vslam.git && \
+  cd stella_vslam && \
   git submodule update -i --recursive && \
   mkdir -p build && \
   cd build && \
@@ -125,7 +125,7 @@ RUN set -x && \
   rm -rf /var/lib/apt/lists/*
 
 WORKDIR /catkin_ws
-COPY . /catkin_ws/src/openvslam_ros
+COPY . /catkin_ws/src/stella_vslam_ros
 
 RUN set -x && \
   : "build ROS packages" && \

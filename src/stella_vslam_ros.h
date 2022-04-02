@@ -1,9 +1,9 @@
-#ifndef OPENVSLAM_ROS_H
-#define OPENVSLAM_ROS_H
+#ifndef STELLA_SLAM_ROS_H
+#define STELLA_SLAM_ROS_H
 
-#include <openvslam/system.h>
-#include <openvslam/config.h>
-#include <openvslam/util/stereo_rectifier.h>
+#include <stella_vslam/system.h>
+#include <stella_vslam/config.h>
+#include <stella_vslam/util/stereo_rectifier.h>
 
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
@@ -23,16 +23,16 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/PoseArray.h>
 
-namespace openvslam_ros {
+namespace stella_vslam_ros {
 class system {
 public:
-    system(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path);
+    system(const std::shared_ptr<stella_vslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path);
     void publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& stamp);
     void publish_pointcloud(const ros::Time& stamp);
     void publish_keyframes(const ros::Time& stamp);
     void setParams();
-    openvslam::system SLAM_;
-    std::shared_ptr<openvslam::config> cfg_;
+    stella_vslam::system SLAM_;
+    std::shared_ptr<stella_vslam::config> cfg_;
     ros::NodeHandle nh_;
     ros::NodeHandle private_nh_;
     image_transport::ImageTransport it_;
@@ -62,7 +62,7 @@ private:
 
 class mono : public system {
 public:
-    mono(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path);
+    mono(const std::shared_ptr<stella_vslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path);
     void callback(const sensor_msgs::ImageConstPtr& msg);
 
     image_transport::Subscriber sub_;
@@ -70,11 +70,11 @@ public:
 
 class stereo : public system {
 public:
-    stereo(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path,
+    stereo(const std::shared_ptr<stella_vslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path,
            const bool rectify);
     void callback(const sensor_msgs::ImageConstPtr& left, const sensor_msgs::ImageConstPtr& right);
 
-    std::shared_ptr<openvslam::util::stereo_rectifier> rectifier_;
+    std::shared_ptr<stella_vslam::util::stereo_rectifier> rectifier_;
     image_transport::SubscriberFilter left_sf_, right_sf_;
     using ApproximateTimeSyncPolicy = message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image>;
     std::shared_ptr<ApproximateTimeSyncPolicy::Sync> approx_time_sync_;
@@ -85,7 +85,7 @@ public:
 
 class rgbd : public system {
 public:
-    rgbd(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path);
+    rgbd(const std::shared_ptr<stella_vslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path);
     void callback(const sensor_msgs::ImageConstPtr& color, const sensor_msgs::ImageConstPtr& depth);
 
     image_transport::SubscriberFilter color_sf_, depth_sf_;
@@ -95,6 +95,6 @@ public:
     std::shared_ptr<ExactTimeSyncPolicy::Sync> exact_time_sync_;
     bool use_exact_time_;
 };
-} // namespace openvslam_ros
+} // namespace stella_vslam_ros
 
-#endif // OPENVSLAM_ROS_H
+#endif // STELLA_SLAM_ROS_H

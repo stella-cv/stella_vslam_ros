@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.1)
-project(openvslam_ros LANGUAGES CXX C)
+project(stella_vslam_ros LANGUAGES CXX C)
 
 if(POLICY CMP0042)
     cmake_policy(SET CMP0042 NEW)
@@ -131,8 +131,8 @@ find_package(catkin REQUIRED COMPONENTS
 # thread library
 find_package(Threads REQUIRED)
 
-# OpenVSLAM
-find_package(openvslam REQUIRED)
+# stella_vslam
+find_package(stella_vslam REQUIRED)
 
 # OpenCV
 find_package(OpenCV 3.3.1 QUIET)
@@ -198,11 +198,11 @@ catkin_package(CATKIN_DEPENDS
 
 include_directories(
         ${catkin_INCLUDE_DIRS}
-        ${openvslam_INCLUDE_DIRS}
+        ${stella_vslam_INCLUDE_DIRS}
         src)
 
 link_libraries(
         ${catkin_LIBRARIES}
-        ${openvslam_LIBS})
+        ${stella_vslam_LIBS})
 
 add_subdirectory(src)

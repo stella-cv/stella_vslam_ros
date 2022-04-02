@@ -84,9 +84,9 @@ RUN set -x && \
   rm -rf *
 ENV Pangolin_DIR=${CMAKE_INSTALL_PREFIX}/lib/cmake/Pangolin
 
-# OpenVSLAM
+# stella_vslam
 RUN set -x && \
-  : "OpenVSLAM dependencies" && \
+  : "stella_vslam dependencies" && \
   apt-get update -y -qq && \
   apt-get install -y -qq \
     ros-${ROS_DISTRO}-libg2o && \
