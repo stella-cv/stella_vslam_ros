@@ -9,10 +9,10 @@ endif()
 set(EXECUTABLE_TARGETS "")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-add_executable(run_slam run_slam.cc openvslam_ros.cc)
+add_executable(run_slam run_slam.cc stella_vslam_ros.cc)
 list(APPEND EXECUTABLE_TARGETS run_slam)
 
-add_executable(run_localization run_localization.cc openvslam_ros.cc)
+add_executable(run_localization run_localization.cc stella_vslam_ros.cc)
 list(APPEND EXECUTABLE_TARGETS run_localization)
 
 foreach(EXECUTABLE_TARGET IN LISTS EXECUTABLE_TARGETS)
@@ -57,7 +57,7 @@ foreach(EXECUTABLE_TARGET IN LISTS EXECUTABLE_TARGETS)
     target_include_directories(${EXECUTABLE_TARGET}
                                PRIVATE ${rclcpp_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
     target_link_libraries(${EXECUTABLE_TARGET}
-                          PRIVATE ${openvslam_LIBS} ${rclcpp_LIBRARIES} ${OpenCV_LIBRARIES})
+                          PRIVATE ${stella_vslam_LIBS} ${rclcpp_LIBRARIES} ${OpenCV_LIBRARIES})
     ament_target_dependencies(${EXECUTABLE_TARGET}
                               PUBLIC
                               rclcpp

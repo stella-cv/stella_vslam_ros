@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(openvslam_ros LANGUAGES CXX C)
+project(stella_vslam_ros LANGUAGES CXX C)
 
 if(POLICY CMP0042)
     cmake_policy(SET CMP0042 NEW)
@@ -133,8 +133,8 @@ find_package(tf2_ros REQUIRED)
 # thread library
 find_package(Threads REQUIRED)
 
-# OpenVSLAM
-find_package(openvslam REQUIRED)
+# stella_vslam
+find_package(stella_vslam REQUIRED)
 
 # OpenCV
 find_package(OpenCV 3.3.1 QUIET)

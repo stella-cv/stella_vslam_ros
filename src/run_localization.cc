@@ -4,10 +4,10 @@
 #include <socket_publisher/publisher.h>
 #endif
 
-#include <openvslam/system.h>
-#include <openvslam/config.h>
-#include <openvslam/util/yaml.h>
-#include <openvslam_ros.h>
+#include <stella_vslam/system.h>
+#include <stella_vslam/config.h>
+#include <stella_vslam/util/yaml.h>
+#include <stella_vslam_ros.h>
 
 #include <iostream>
 #include <chrono>
@@ -27,17 +27,17 @@
 #include <gperftools/profiler.h>
 #endif
 
-void localization(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path,
+void localization(const std::shared_ptr<stella_vslam::config>& cfg, const std::string& vocab_file_path,
                   const std::string& mask_img_path, const std::string& map_db_path, const bool mapping, const bool rectify) {
-    std::shared_ptr<openvslam_ros::system> ros;
-    if (cfg->camera_->setup_type_ == openvslam::camera::setup_type_t::Monocular) {
-        ros = std::make_shared<openvslam_ros::mono>(cfg, vocab_file_path, mask_img_path);
+    std::shared_ptr<stella_vslam_ros::system> ros;
+    if (cfg->camera_->setup_type_ == stella_vslam::camera::setup_type_t::Monocular) {
+        ros = std::make_shared<stella_vslam_ros::mono>(cfg, vocab_file_path, mask_img_path);
     }
-    else if (cfg->camera_->setup_type_ == openvslam::camera::setup_type_t::Stereo) {
-        ros = std::make_shared<openvslam_ros::stereo>(cfg, vocab_file_path, mask_img_path, rectify);
+    else if (cfg->camera_->setup_type_ == stella_vslam::camera::setup_type_t::Stereo) {
+        ros = std::make_shared<stella_vslam_ros::stereo>(cfg, vocab_file_path, mask_img_path, rectify);
     }
-    else if (cfg->camera_->setup_type_ == openvslam::camera::setup_type_t::RGBD) {
-        ros = std::make_shared<openvslam_ros::rgbd>(cfg, vocab_file_path, mask_img_path);
+    else if (cfg->camera_->setup_type_ == stella_vslam::camera::setup_type_t::RGBD) {
+        ros = std::make_shared<stella_vslam_ros::rgbd>(cfg, vocab_file_path, mask_img_path);
     }
     else {
         throw std::runtime_error("Invalid setup type: " + cfg->camera_->get_setup_type_string());
@@ -59,9 +59,9 @@ void localization(const std::shared_ptr<openvslam::config>& cfg, const std::stri
     // create a viewer object
     // and pass the frame_publisher and the map_publisher
 #ifdef USE_PANGOLIN_VIEWER
-    pangolin_viewer::viewer viewer(openvslam::util::yaml_optional_ref(cfg->yaml_node_, "PangolinViewer"), &SLAM, SLAM.get_frame_publisher(), SLAM.get_map_publisher());
+    pangolin_viewer::viewer viewer(stella_vslam::util::yaml_optional_ref(cfg->yaml_node_, "PangolinViewer"), &SLAM, SLAM.get_frame_publisher(), SLAM.get_map_publisher());
 #elif USE_SOCKET_PUBLISHER
-    socket_publisher::publisher publisher(openvslam::util::yaml_optional_ref(cfg->yaml_node_, "SocketPublisher"), &SLAM, SLAM.get_frame_publisher(), SLAM.get_map_publisher());
+    socket_publisher::publisher publisher(stella_vslam::util::yaml_optional_ref(cfg->yaml_node_, "SocketPublisher"), &SLAM, SLAM.get_frame_publisher(), SLAM.get_map_publisher());
 #endif
 
     // TODO: Pangolin needs to run in the main thread on OSX
@@ -171,9 +171,9 @@ int main(int argc, char* argv[]) {
     }
 
     // load configuration
-    std::shared_ptr<openvslam::config> cfg;
+    std::shared_ptr<stella_vslam::config> cfg;
     try {
-        cfg = std::make_shared<openvslam::config>(setting_file_path->value());
+        cfg = std::make_shared<stella_vslam::config>(setting_file_path->value());
     }
     catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

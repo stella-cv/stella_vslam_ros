@@ -9,25 +9,25 @@
 If you are going to use non RGBD setup then exceute following in your terminal.
 
 ```shell
-~$ git clone https://github.com/OpenVSLAM-Community/openvslam_ros.git
+~$ git clone https://github.com/stella-cv/stella_vslam_ros.git
 ```
 
-(If you are going to use RGBD setup then refer <https://github.com/OpenVSLAM-Community/openvslam_ros/issues/32>.)
+(If you are going to use RGBD setup then refer <https://github.com/stella-cv/stella_vslam_ros/issues/32>.)
 
 ### Step 2: Create docker image
 
 Execute the following commands:
 
 ```shell
-~$ cd openvslam_ros
-~/openvslam_ros$ docker build -t openvslam-ros-socket -f Dockerfile.socket .
+~$ cd stella_vslam_ros
+~/stella_vslam_ros$ docker build -t stella_vslam-ros-socket -f Dockerfile.socket .
 ```
 
 You can accelerate the build of the docker image with `--build-arg NUM_THREADS=<number of parallel builds>` option in command line argument as follows:
 
 ```shell
 # building the docker image with four threads
-~/openvslam_ros$ docker build -t openvslam-ros-socket -f Dockerfile.socket . --build-arg NUM_THREADS=4
+~/stella_vslam_ros$ docker build -t stella_vslam-ros-socket -f Dockerfile.socket . --build-arg NUM_THREADS=4
 ```
 
 ### Step 3: Docker Image of Server
@@ -35,12 +35,12 @@ You can accelerate the build of the docker image with `--build-arg NUM_THREADS=<
 Execute the following commands:
 
 ```shell
-~$ git clone https://github.com/OpenVSLAM-Community/openvslam.git
-~$ cd openvslam/viewer
-~/openvslam/viewer$ docker build -t openvslam-ros-server .
+~$ git clone https://github.com/stella-cv/stella_vslam.git
+~$ cd stella_vslam/viewer
+~/stella_vslam/viewer$ docker build -t stella_vslam-ros-server .
 ```
 
-### Step 4: Start Docker Containers for "openvslam-ros-server"
+### Step 4: Start Docker Containers for "stella_vslam-ros-server"
 
 ### On Linux
 
@@ -51,7 +51,7 @@ Execute the following commands:
 Terminal1:
 
 ```shell
-~$ docker run --rm -it --name openvslam-ros-server --net=host openvslam-ros-server
+~$ docker run --rm -it --name stella_vslam-ros-server --net=host stella_vslam-ros-server
 ```
 
 Following message should appear on your terminal.
@@ -63,7 +63,7 @@ HTTP server: listening on *:3001
 
 After launching, access to `http://localhost:3001/` with the web browser.
 
-### Step 5: Start Docker Containers for "openvslam-ros-socket"
+### Step 5: Start Docker Containers for "stella_vslam-ros-socket"
 
 ### Step 5.1: Using USB Camera
 
@@ -71,16 +71,16 @@ Execute the following commands:
 
 Terminal2:
 
-Launch the container of openvslam-ros-socket. The shell interface will be launched in the docker container.
+Launch the container of stella_vslam-ros-socket. The shell interface will be launched in the docker container.
 Download an ORB vocabulary from GitHub. Publish Images Captured by a USB Camera using package like image_tools.
 
 ```shell
 ~$ xhost +local:
-~$ docker run --rm -it --name openvslam-ros-socket --device /dev/video0 --net=host openvslam-ros-socket
+~$ docker run --rm -it --name stella_vslam-ros-socket --device /dev/video0 --net=host stella_vslam-ros-socket
 ```
 
 ```shell-session
-root@hostname:/ros2_ws# curl -sL "https://github.com/OpenVSLAM-Community/FBoW_orb_vocab/raw/main/orb_vocab.fbow" -o orb_vocab.fbow
+root@hostname:/ros2_ws# curl -sL "https://github.com/stella-cv/FBoW_orb_vocab/raw/main/orb_vocab.fbow" -o orb_vocab.fbow
 root@hostname:/ros2_ws# ros2 run image_tools cam2image
 ```
 
@@ -89,7 +89,7 @@ Terminal3:
 Republish the ROS topic to `/camera/image_raw`.
 
 ```shell
-~$ docker exec -it openvslam-ros-socket /bin/bash
+~$ docker exec -it stella_vslam-ros-socket /bin/bash
 ```
 
 ```shell-session
@@ -103,13 +103,13 @@ Terminal4:
 Run it in slam mode for run tracking and mapping. Please memtion the appropriate path to your usb camera config.yaml file in below command.
 
 ```shell
-~$ docker exec -it openvslam-ros-socket /bin/bash
+~$ docker exec -it stella_vslam-ros-socket /bin/bash
 ```
 
 ```shell-session
 root@hostname:/ros2_ws# source /opt/ros/${ROS_DISTRO}/setup.bash
 root@hostname:/ros2_ws# source /ros2_ws/install/setup.bash
-root@hostname:/ros2_ws# ros2 run openvslam_ros run_slam -v ./orb_vocab.fbow -c /path/to/config.yaml --map-db ./usb_camera.msg
+root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_slam -v ./orb_vocab.fbow -c /path/to/config.yaml --map-db ./usb_camera.msg
 ```
 
 You can see the mapping and tracking in your localhost browser.
@@ -137,7 +137,7 @@ Terminal3:
 Run localization
 
 ```shell-session
-root@hostname:/ros2_ws# ros2 run openvslam_ros run_localization -v ./orb_vocab.fbow -c /path/to/config.yaml --map-db ./usb_camera.msg
+root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_localization -v ./orb_vocab.fbow -c /path/to/config.yaml --map-db ./usb_camera.msg
 ```
 
 ### Step 5.2: Using VIDEO file
@@ -146,21 +146,21 @@ Execute the following commands:
 
 Terminal2:
 
-Launch the container of openvslam-ros-socket. The shell interface will be launched in the docker container.
+Launch the container of stella_vslam-ros-socket. The shell interface will be launched in the docker container.
 Download an ORB vocabulary from GitHub and download a sample dataset from Google Drive for mapping and localization respectively.
 
 ```shell
-~$ docker run --rm -it --name openvslam-ros-socket --net=host openvslam-ros-socket
+~$ docker run --rm -it --name stella_vslam-ros-socket --net=host stella_vslam-ros-socket
 ```
 
 OR if you would like to mount a folder (ex:Inputs) to access all required files like config.yaml, rosbag.bag etc then you can run below:
 
 ```shell
-~$ docker run --rm -it --name openvslam-ros-socket --net=host -v $PWD/Inputs:/ros2_ws/Inputs openvslam-ros-socket
+~$ docker run --rm -it --name stella_vslam-ros-socket --net=host -v $PWD/Inputs:/ros2_ws/Inputs stella_vslam-ros-socket
 ```
 
 ```shell-session
-root@hostname:/ros2_ws# curl -sL "https://github.com/OpenVSLAM-Community/FBoW_orb_vocab/raw/main/orb_vocab.fbow" -o orb_vocab.fbow
+root@hostname:/ros2_ws# curl -sL "https://github.com/stella-cv/FBoW_orb_vocab/raw/main/orb_vocab.fbow" -o orb_vocab.fbow
 root@hostname:/ros2_ws# FILE_ID="1d8kADKWBptEqTF7jEVhKatBEdN7g0ikY"
 root@hostname:/ros2_ws# curl -sc /tmp/cookie "https://drive.google.com/uc?export=download&id=${FILE_ID}" > /dev/null
 root@hostname:/ros2_ws# CODE="$(awk '/_warning_/ {print $NF}' /tmp/cookie)"
@@ -188,7 +188,7 @@ root@hostname:/ros2_ws# ros2 run publisher openvslam_video -m ./aist_living_lab_
 Terminal3:
 
 ```shell
-~$ docker exec -it openvslam-ros-socket /bin/bash
+~$ docker exec -it stella_vslam-ros-socket /bin/bash
 ```
 
 ```shell-session
@@ -202,13 +202,13 @@ Images will be published in camera/image_raw topic and frame_id is set to camera
 Terminal4:
 
 ```shell
-~$ docker exec -it openvslam-ros-socket /bin/bash
+~$ docker exec -it stella_vslam-ros-socket /bin/bash
 ```
 
 ```shell-session
 root@hostname:/ros2_ws# source /opt/ros/${ROS_DISTRO}/setup.bash
 root@hostname:/ros2_ws# source /ros2_ws/install/setup.bash
-root@hostname:/ros2_ws# ros2 run openvslam_ros run_slam -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db aist_living_lab_1_map.msg
+root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_slam -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db aist_living_lab_1_map.msg
 ```
 
 You can see the mapping and tracking in your localhost browser.
@@ -236,7 +236,7 @@ Terminal4:
 Run localization
 
 ```shell-session
-root@hostname:/ros2_ws# ros2 run openvslam_ros run_localization -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db aist_living_lab_1_map.msg
+root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_localization -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db aist_living_lab_1_map.msg
 ```
 
 ### Step 5.3: Using ROSBAG file
@@ -245,16 +245,16 @@ Execute the following commands:
 
 Terminal2:
 
-Launch container of openvslam-ros-socket. The shell interface will be launched in the docker container.
+Launch container of stella_vslam-ros-socket. The shell interface will be launched in the docker container.
 
 ```shell
-~$ docker run --rm -it --name openvslam-ros-socket --net=host openvslam-ros-socket   
+~$ docker run --rm -it --name stella_vslam-ros-socket --net=host stella_vslam-ros-socket   
 ```
 
 OR if you would like to mount a folder (ex:Inputs) to access all required files like config.yaml, rosbag.bag etc then you can run below:
 
 ```shell
-~$ docker run --rm -it --name openvslam-ros-socket --net=host -v $PWD/Inputs:/ros2_ws/Inputs openvslam-ros-socket
+~$ docker run --rm -it --name stella_vslam-ros-socket --net=host -v $PWD/Inputs:/ros2_ws/Inputs stella_vslam-ros-socket
 ```
 
 ```shell-session
@@ -264,7 +264,7 @@ root@hostname:/ros2_ws# ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 
 Terminal3:
 
 ```shell
-~$ docker exec -it openvslam-ros-socket /bin/bash
+~$ docker exec -it stella_vslam-ros-socket /bin/bash
 ```
 
 ```shell-session
@@ -276,24 +276,24 @@ root@hostname:/ros2_ws# ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 
 Terminal4:
 
 ```shell
-~$ docker exec -it openvslam-ros-socket /bin/bash
+~$ docker exec -it stella_vslam-ros-socket /bin/bash
 ```
 
 ```shell-session
 root@hostname:/ros2_ws# source /opt/ros/${ROS_DISTRO}/setup.bash
 root@hostname:/ros2_ws# source /ros2_ws/install/setup.bash
-root@hostname:/ros2_ws# ros2 run openvslam_ros run_slam -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db /path/to/message.msg --ros-args -r /camera/image_raw:=/cam0/image_raw
+root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_slam -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db /path/to/message.msg --ros-args -r /camera/image_raw:=/cam0/image_raw
 ```
 
 Terminal5:
 
-Build docker image with rosbag installed and launch container of openvslam-rosbag.
+Build docker image with rosbag installed and launch container of stella_vslam-rosbag.
 
 ```shell
-~$ docker build -t openvslam-rosbag -f Dockerfile.rosbag .    
-~$ docker run --rm -it --name openvslam-rosbag --net=host openvslam-rosbag
+~$ docker build -t stella_vslam-rosbag -f Dockerfile.rosbag .    
+~$ docker run --rm -it --name stella_vslam-rosbag --net=host stella_vslam-rosbag
 # OR
-# ~$ docker run --rm -it --name openvslam-rosbag --net=host -v $PWD/Inputs:/ros2_ws/Inputs openvslam-rosbag
+# ~$ docker run --rm -it --name stella_vslam-rosbag --net=host -v $PWD/Inputs:/ros2_ws/Inputs stella_vslam-rosbag
 ```
 
 ```shell-session
@@ -327,7 +327,7 @@ Terminal4:
 Run localization
 
 ```shell-session
-root@hostname:/ros2_ws# ros2 run openvslam_ros run_localization -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db /path/to/message.msg --ros-args -r /camera/image_raw:=/cam0/image_raw
+root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_localization -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db /path/to/message.msg --ros-args -r /camera/image_raw:=/cam0/image_raw
 ```
 
 Terminal5:

@@ -1,21 +1,23 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-    <name>openvslam_ros</name>
+    <name>stella_vslam_ros</name>
     <version>0.2.0</version>
-    <description>The ROS2 package for OpenVSLAM</description>
+    <description>The ROS2 package for stella_vslam</description>
 
+    <!-- Authors of the original version of OpenVSLAM -->
     <author>Mitsumasa Ichihara</author>
     <author>Shinya Sumikura</author>
     <author>Ken Sakurada</author>
+    <!-- Author/maintainer of the stella_vslam (fork version of OpenVSLAM) -->
     <maintainer email="world.applepie@gmail.com">ymd-stella</maintainer>
 
     <license>2-clause BSD</license>
-    <url type="website">https://openvslam-community.readthedocs.io/</url>
+    <url type="website">https://stella-cv.readthedocs.io/</url>
 
     <buildtool_depend>ament_cmake</buildtool_depend>
 
-    <depend>openvslam</depend>
+    <depend>stella_vslam</depend>
     <depend>eigen</depend>
     <depend>libgoogle-glog-dev</depend>
     <depend>image_transport</depend>

@@ -1,6 +1,6 @@
-# openvslam_ros
+# stella_vslam_ros
 
-[OpenVSLAM](https://github.com/OpenVSLAM-Community/openvslam)'s ROS package.
+[stella_vslam](https://github.com/stella-cv/stella_vslam)'s ROS package.
 
 ## Subscribed topics
 
@@ -34,4 +34,4 @@
 
 ## Tutorial
 
-Users unfamiliar with docker, ROS2, or OpenVSLAM should refer to the [tutorial](/doc/tutorial.md).
+Users unfamiliar with docker, ROS2, or stella_vslam should refer to the [tutorial](/doc/tutorial.md).

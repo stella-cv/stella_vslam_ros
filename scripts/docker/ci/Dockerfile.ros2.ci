@@ -45,7 +45,7 @@ ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPA
 ARG DBOW2_COMMIT=687fcb74dd13717c46add667e3fbfa9828a7019f
 WORKDIR /tmp
 RUN set -x && \
-  git clone https://github.com/OpenVSLAM-Community/DBoW2.git && \
+  git clone https://github.com/stella-cv/DBoW2.git && \
   cd DBoW2 && \
   git checkout ${DBOW2_COMMIT} && \
   mkdir -p build && \
@@ -103,9 +103,9 @@ RUN set -x && \
   rm -rf *
 ENV Pangolin_DIR=${CMAKE_INSTALL_PREFIX}/lib/cmake/Pangolin
 
-# OpenVSLAM
+# stella_vslam
 RUN set -x && \
-  : "OpenVSLAM dependencies" && \
+  : "stella_vslam dependencies" && \
   apt-get update -y -qq && \
   apt-get install -y -qq \
     ros-${ROS2_DISTRO}-libg2o && \

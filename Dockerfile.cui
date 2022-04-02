@@ -43,9 +43,9 @@ ENV LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib:${LD_LIBRARY_PATH}
 ENV NVIDIA_VISIBLE_DEVICES ${NVIDIA_VISIBLE_DEVICES:-all}
 ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
 
-# OpenVSLAM
+# stella_vslam
 RUN set -x && \
-  : "OpenVSLAM dependencies" && \
+  : "stella_vslam dependencies" && \
   apt-get update -y -qq && \
   apt-get install -y -qq \
     ros-${ROS_DISTRO}-libg2o && \
@@ -54,8 +54,8 @@ RUN set -x && \
   rm -rf /var/lib/apt/lists/*
 
 RUN set -x && \
-  git clone --depth 1 https://github.com/OpenVSLAM-Community/openvslam.git && \
-  cd openvslam && \
+  git clone --depth 1 https://github.com/stella-cv/stella_vslam.git && \
+  cd stella_vslam && \
   git submodule update -i --recursive && \
   mkdir -p build && \
   cd build && \
@@ -85,7 +85,7 @@ RUN set -x && \
   rm -rf /var/lib/apt/lists/*
 
 WORKDIR /ros2_ws
-COPY . /ros2_ws/src/openvslam_ros
+COPY . /ros2_ws/src/stella_vslam_ros
 
 RUN set -x && \
   : "build ROS2 packages" && \
