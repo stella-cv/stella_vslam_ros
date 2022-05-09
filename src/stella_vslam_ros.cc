@@ -104,7 +104,7 @@ void system::publish_keyframes(const ros::Time& stamp) {
         if (!keyfrm || keyfrm->will_be_erased()) {
             continue;
         }
-        Eigen::Matrix4d cam_pose_wc = keyfrm->get_cam_pose_inv();
+        Eigen::Matrix4d cam_pose_wc = keyfrm->get_pose_wc();
         Eigen::Matrix3d rot(cam_pose_wc.block<3, 3>(0, 0));
         Eigen::Translation3d trans(cam_pose_wc.block<3, 1>(0, 3));
         Eigen::Affine3d map_to_camera_affine(trans * rot);
