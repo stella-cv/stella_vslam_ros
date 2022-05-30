@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: [ ros ]
 
+  workflow_dispatch:
+
 jobs:
   clang-format:
     runs-on: ubuntu-latest
