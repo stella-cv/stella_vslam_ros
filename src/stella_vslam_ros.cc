@@ -11,8 +11,9 @@
 #include <Eigen/Geometry>
 
 namespace stella_vslam_ros {
-system::system(const std::shared_ptr<stella_vslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
-    : SLAM_(cfg, vocab_file_path), cfg_(cfg), node_(std::make_shared<rclcpp::Node>("run_slam")), custom_qos_(rmw_qos_profile_default),
+system::system(const std::shared_ptr<stella_vslam::system>& slam,
+               const std::string& mask_img_path)
+    : slam_(slam), node_(std::make_shared<rclcpp::Node>("run_slam")), custom_qos_(rmw_qos_profile_default),
       mask_(mask_img_path.empty() ? cv::Mat{} : cv::imread(mask_img_path, cv::IMREAD_GRAYSCALE)),
       pose_pub_(node_->create_publisher<nav_msgs::msg::Odometry>("~/camera_pose", 1)),
       map_to_odom_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>(node_)),
@@ -153,13 +154,14 @@ void system::init_pose_callback(
                                       .matrix();
 
     const Eigen::Vector3d normal_vector = (Eigen::Vector3d() << 0., 1., 0.).finished();
-    if (!SLAM_.relocalize_by_pose_2d(cam_pose_cv, normal_vector)) {
+    if (!slam_->relocalize_by_pose_2d(cam_pose_cv, normal_vector)) {
         RCLCPP_ERROR(node_->get_logger(), "Can not set initial pose");
     }
 }
 
-mono::mono(const std::shared_ptr<stella_vslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
-    : system(cfg, vocab_file_path, mask_img_path) {
+mono::mono(const std::shared_ptr<stella_vslam::system>& slam,
+           const std::string& mask_img_path)
+    : system(slam, mask_img_path) {
     sub_ = image_transport::create_subscription(
         node_.get(), "camera/image_raw", [this](const sensor_msgs::msg::Image::ConstSharedPtr& msg) { callback(msg); }, "raw", custom_qos_);
 }
@@ -171,7 +173,7 @@ void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
     const double timestamp = tp_1.seconds();
 
     // input the current frame and estimate the camera pose
-    auto cam_pose_wc = SLAM_.feed_monocular_frame(cv_bridge::toCvShare(msg)->image, timestamp, mask_);
+    auto cam_pose_wc = slam_->feed_monocular_frame(cv_bridge::toCvShare(msg)->image, timestamp, mask_);
 
     const rclcpp::Time tp_2 = node_->now();
     const double track_time = (tp_2 - tp_1).seconds();
@@ -184,10 +186,11 @@ void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
     }
 }
 
-stereo::stereo(const std::shared_ptr<stella_vslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path,
-               const bool rectify)
-    : system(cfg, vocab_file_path, mask_img_path),
-      rectifier_(rectify ? std::make_shared<stella_vslam::util::stereo_rectifier>(cfg) : nullptr),
+stereo::stereo(const std::shared_ptr<stella_vslam::system>& slam,
+               const std::string& mask_img_path,
+               const std::shared_ptr<stella_vslam::util::stereo_rectifier>& rectifier)
+    : system(slam, mask_img_path),
+      rectifier_(rectifier),
       left_sf_(node_, "camera/left/image_raw"),
       right_sf_(node_, "camera/right/image_raw") {
     use_exact_time_ = false;
@@ -220,7 +223,7 @@ void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const
     const double timestamp = tp_1.seconds();
 
     // input the current frame and estimate the camera pose
-    auto cam_pose_wc = SLAM_.feed_stereo_frame(leftcv, rightcv, timestamp, mask_);
+    auto cam_pose_wc = slam_->feed_stereo_frame(leftcv, rightcv, timestamp, mask_);
 
     const rclcpp::Time tp_2 = node_->now();
     const double track_time = (tp_2 - tp_1).seconds();
@@ -233,8 +236,8 @@ void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const
     }
 }
 
-rgbd::rgbd(const std::shared_ptr<stella_vslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
-    : system(cfg, vocab_file_path, mask_img_path),
+rgbd::rgbd(const std::shared_ptr<stella_vslam::system>& slam, const std::string& mask_img_path)
+    : system(slam, mask_img_path),
       color_sf_(node_, "camera/color/image_raw"),
       depth_sf_(node_, "camera/depth/image_raw") {
     use_exact_time_ = false;
@@ -266,7 +269,7 @@ void rgbd::callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const 
     const double timestamp = tp_1.seconds();
 
     // input the current frame and estimate the camera pose
-    auto cam_pose_wc = SLAM_.feed_RGBD_frame(colorcv, depthcv, timestamp, mask_);
+    auto cam_pose_wc = slam_->feed_RGBD_frame(colorcv, depthcv, timestamp, mask_);
 
     const rclcpp::Time tp_2 = node_->now();
     const double track_time = (tp_2 - tp_1).seconds();
