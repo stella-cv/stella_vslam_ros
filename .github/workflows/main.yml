@@ -33,6 +33,8 @@ jobs:
         ROS_LOG_DIR: ${GITHUB_WORKSPACE}/.ros
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: build ros2 packages
         run: |
           mkdir -p /ros_ws/src
@@ -48,7 +50,7 @@ jobs:
         run: |
           (source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_footprint)&
           (source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 run tf2_ros static_transform_publisher 0 0 -1.57 0 0 -1.57 base_footprint cam0)&
-          (source /opt/ros/${ROS2_DISTRO}/setup.bash && source /ros_ws/install/setup.bash && ros2 run stella_vslam_ros run_slam -v /datasets/orb_vocab/orb_vocab.fbow -c /ros_ws/src/stella_vslam/example/euroc/EuRoC_mono.yaml --map-db map_mono.msg --ros-args -r /camera/image_raw:=/cam0/image_raw)&
+          (source /opt/ros/${ROS2_DISTRO}/setup.bash && source /ros_ws/install/setup.bash && ros2 run stella_vslam_ros run_slam -v /datasets/orb_vocab/orb_vocab.fbow -c /ros_ws/src/stella_vslam/example/euroc/EuRoC_mono.yaml --map-db-out map_mono.msg --ros-args -r /camera/image_raw:=/cam0/image_raw)&
           (source /opt/ros/${ROS1_DISTRO}/setup.bash && source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 bag play -s rosbag_v2 /datasets/EuRoC/MH_04_difficult.bag)
           sleep 1
           if ! pkill -0 run_slam; then exit 1; fi
@@ -56,11 +58,11 @@ jobs:
           pkill -SIGINT -f run_slam
           while pkill -0 run_slam 2> /dev/null; do sleep 1; done
           pkill -SIGINT -f static_transform_publisher
-      - name: run run_slam (stereo)
+      - name: run slam (stereo)
         run: |
           (source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_footprint)&
           (source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 run tf2_ros static_transform_publisher 0 0 -1.57 0 0 -1.57 base_footprint cam0)&
-          (source /opt/ros/${ROS2_DISTRO}/setup.bash && source /ros_ws/install/setup.bash && ros2 run stella_vslam_ros run_slam -r -v /datasets/orb_vocab/orb_vocab.fbow -c /ros_ws/src/stella_vslam/example/euroc/EuRoC_stereo.yaml --map-db map_stereo.msg --ros-args -r /camera/left/image_raw:=/cam0/image_raw -r /camera/right/image_raw:=/cam1/image_raw)&
+          (source /opt/ros/${ROS2_DISTRO}/setup.bash && source /ros_ws/install/setup.bash && ros2 run stella_vslam_ros run_slam -r -v /datasets/orb_vocab/orb_vocab.fbow -c /ros_ws/src/stella_vslam/example/euroc/EuRoC_stereo.yaml --map-db-out map_stereo.msg --ros-args -r /camera/left/image_raw:=/cam0/image_raw -r /camera/right/image_raw:=/cam1/image_raw)&
           (source /opt/ros/${ROS1_DISTRO}/setup.bash && source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 bag play -s rosbag_v2 /datasets/EuRoC/MH_04_difficult.bag)
           sleep 1
           if ! pkill -0 run_slam; then exit 1; fi
@@ -68,14 +70,14 @@ jobs:
           pkill -SIGINT -f run_slam
           while pkill -0 run_slam 2> /dev/null; do sleep 1; done
           pkill -SIGINT -f static_transform_publisher
-      - name: run run_localization
+      - name: run localization
         run: |
           (source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_footprint)&
           (source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 run tf2_ros static_transform_publisher 0 0 0 -1.57 0 -1.57 base_footprint cam0)&
-          (source /opt/ros/${ROS2_DISTRO}/setup.bash && source /ros_ws/install/setup.bash && ros2 run stella_vslam_ros run_localization -v /datasets/orb_vocab/orb_vocab.fbow -c /ros_ws/src/stella_vslam/example/euroc/EuRoC_mono.yaml --map-db map_mono.msg --ros-args -r /camera/image_raw:=/cam0/image_raw)&
+          (source /opt/ros/${ROS2_DISTRO}/setup.bash && source /ros_ws/install/setup.bash && ros2 run stella_vslam_ros run_slam --disable-mapping -v /datasets/orb_vocab/orb_vocab.fbow -c /ros_ws/src/stella_vslam/example/euroc/EuRoC_mono.yaml --map-db-in map_mono.msg --ros-args -r /camera/image_raw:=/cam0/image_raw)&
           sleep 5
           (source /opt/ros/${ROS1_DISTRO}/setup.bash && source /opt/ros/${ROS2_DISTRO}/setup.bash && ros2 bag play -s rosbag_v2 /datasets/EuRoC/MH_04_difficult.bag)
-          pkill -SIGINT -f run_localization
+          pkill -SIGINT -f run_slam
           pkill -SIGINT -f static_transform_publisher
 
   rosdep:
