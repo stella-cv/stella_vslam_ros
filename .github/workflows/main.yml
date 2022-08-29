@@ -31,6 +31,8 @@ jobs:
       image: ghcr.io/ymd-stella/stella-cv/stella_vslam-ros:latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: install stella_vslam
         run: |
           git clone -b main --depth 1 https://github.com/stella-cv/stella_vslam.git
@@ -55,7 +57,7 @@ jobs:
           roscore&
           rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_footprint&
           rosrun tf2_ros static_transform_publisher 0 0 0 -1.57 0.0 -1.57 base_footprint cam0&
-          rosrun stella_vslam_ros run_slam -v /datasets/orb_vocab/orb_vocab.fbow -c stella_vslam/example/euroc/EuRoC_mono.yaml --map-db map_mono.msg /camera/image_raw:=/cam0/image_raw&
+          rosrun stella_vslam_ros run_slam -v /datasets/orb_vocab/orb_vocab.fbow -c stella_vslam/example/euroc/EuRoC_mono.yaml --map-db-out map_mono.msg /camera/image_raw:=/cam0/image_raw&
           sleep 1
           rosbag play /datasets/EuRoC/MH_04_difficult.bag
           if ! pkill -0 run_slam; then exit 1; fi
@@ -63,13 +65,13 @@ jobs:
           while pkill -0 run_slam 2> /dev/null; do sleep 1; done
           pkill -SIGINT -f static_transform_publisher
           pkill -SIGINT roscore
-      - name: run run_slam (stereo)
+      - name: run slam (stereo)
         run: |
           source /ros_ws/devel/setup.bash
           roscore&
           rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_footprint&
           rosrun tf2_ros static_transform_publisher 0 0 0 -1.57 0.0 -1.57 base_footprint cam0&
-          rosrun stella_vslam_ros run_slam -r -v /datasets/orb_vocab/orb_vocab.fbow -c stella_vslam/example/euroc/EuRoC_stereo.yaml --map-db map_stereo.msg /camera/left/image_raw:=/cam0/image_raw /camera/right/image_raw:=/cam1/image_raw&
+          rosrun stella_vslam_ros run_slam -r -v /datasets/orb_vocab/orb_vocab.fbow -c stella_vslam/example/euroc/EuRoC_stereo.yaml --map-db-out map_stereo.msg /camera/left/image_raw:=/cam0/image_raw /camera/right/image_raw:=/cam1/image_raw&
           sleep 1
           rosbag play /datasets/EuRoC/MH_04_difficult.bag
           if ! pkill -0 run_slam; then exit 1; fi
@@ -77,15 +79,15 @@ jobs:
           while pkill -0 run_slam 2> /dev/null; do sleep 1; done
           pkill -SIGINT -f static_transform_publisher
           pkill -SIGINT roscore
-      - name: run run_localization
+      - name: run localization
         run: |
           source /ros_ws/devel/setup.bash
           roscore&
           rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_footprint&
           rosrun tf2_ros static_transform_publisher 0 0 0 -1.57 0.0 -1.57 base_footprint cam0&
-          rosrun stella_vslam_ros run_localization -v /datasets/orb_vocab/orb_vocab.fbow -c stella_vslam/example/euroc/EuRoC_mono.yaml --map-db map_mono.msg /camera/image_raw:=/cam0/image_raw&
+          rosrun stella_vslam_ros run_slam --disable-mapping -v /datasets/orb_vocab/orb_vocab.fbow -c stella_vslam/example/euroc/EuRoC_mono.yaml --map-db-in map_mono.msg /camera/image_raw:=/cam0/image_raw&
           sleep 5
           rosbag play /datasets/EuRoC/MH_04_difficult.bag
-          pkill -SIGINT -f run_localization
+          pkill -SIGINT -f run_slam
           pkill -SIGINT -f static_transform_publisher
           pkill -SIGINT roscore

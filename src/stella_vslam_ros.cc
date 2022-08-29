@@ -16,8 +16,9 @@
 #include <Eigen/Geometry>
 
 namespace stella_vslam_ros {
-system::system(const std::shared_ptr<stella_vslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
-    : SLAM_(cfg, vocab_file_path), cfg_(cfg), private_nh_("~"), it_(nh_), tp_0_(std::chrono::steady_clock::now()),
+system::system(const std::shared_ptr<stella_vslam::system>& slam,
+               const std::string& mask_img_path)
+    : slam_(slam), private_nh_("~"), it_(nh_), tp_0_(std::chrono::steady_clock::now()),
       mask_(mask_img_path.empty() ? cv::Mat{} : cv::imread(mask_img_path, cv::IMREAD_GRAYSCALE)),
       pose_pub_(private_nh_.advertise<nav_msgs::Odometry>("camera_pose", 1)),
       pc_pub_(private_nh_.advertise<sensor_msgs::PointCloud2>("pointcloud", 1)),
@@ -74,7 +75,7 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& s
 void system::publish_pointcloud(const ros::Time& stamp) {
     std::vector<std::shared_ptr<stella_vslam::data::landmark>> landmarks;
     std::set<std::shared_ptr<stella_vslam::data::landmark>> local_landmarks;
-    SLAM_.get_map_publisher()->get_landmarks(landmarks, local_landmarks);
+    slam_->get_map_publisher()->get_landmarks(landmarks, local_landmarks);
     pcl::PointCloud<pcl::PointXYZ> points;
     for (const auto lm : landmarks) {
         if (!lm || lm->will_be_erased()) {
@@ -99,7 +100,7 @@ void system::publish_keyframes(const ros::Time& stamp) {
     keyframes_msg.header.frame_id = map_frame_;
     keyframes_2d_msg.header = keyframes_msg.header;
     std::vector<std::shared_ptr<stella_vslam::data::keyframe>> all_keyfrms;
-    SLAM_.get_map_publisher()->get_keyframes(all_keyfrms);
+    slam_->get_map_publisher()->get_keyframes(all_keyfrms);
     for (const auto keyfrm : all_keyfrms) {
         if (!keyfrm || keyfrm->will_be_erased()) {
             continue;
@@ -201,13 +202,14 @@ void system::init_pose_callback(
                                       .matrix();
 
     const Eigen::Vector3d normal_vector = (Eigen::Vector3d() << 0., 1., 0.).finished();
-    if (!SLAM_.relocalize_by_pose_2d(cam_pose_cv, normal_vector)) {
+    if (!slam_->relocalize_by_pose_2d(cam_pose_cv, normal_vector)) {
         ROS_ERROR("Can not set initial pose");
     }
 }
 
-mono::mono(const std::shared_ptr<stella_vslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
-    : system(cfg, vocab_file_path, mask_img_path) {
+mono::mono(const std::shared_ptr<stella_vslam::system>& slam,
+           const std::string& mask_img_path)
+    : system(slam, mask_img_path) {
     sub_ = it_.subscribe("camera/image_raw", 1, &mono::callback, this);
 }
 void mono::callback(const sensor_msgs::ImageConstPtr& msg) {
@@ -218,7 +220,7 @@ void mono::callback(const sensor_msgs::ImageConstPtr& msg) {
     const auto timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(tp_1 - tp_0_).count();
 
     // input the current frame and estimate the camera pose
-    auto cam_pose_wc = SLAM_.feed_monocular_frame(cv_bridge::toCvShare(msg)->image, timestamp, mask_);
+    auto cam_pose_wc = slam_->feed_monocular_frame(cv_bridge::toCvShare(msg)->image, timestamp, mask_);
 
     const auto tp_2 = std::chrono::steady_clock::now();
 
@@ -237,10 +239,11 @@ void mono::callback(const sensor_msgs::ImageConstPtr& msg) {
     }
 }
 
-stereo::stereo(const std::shared_ptr<stella_vslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path,
-               const bool rectify)
-    : system(cfg, vocab_file_path, mask_img_path),
-      rectifier_(rectify ? std::make_shared<stella_vslam::util::stereo_rectifier>(cfg) : nullptr),
+stereo::stereo(const std::shared_ptr<stella_vslam::system>& slam,
+               const std::string& mask_img_path,
+               const std::shared_ptr<stella_vslam::util::stereo_rectifier>& rectifier)
+    : system(slam, mask_img_path),
+      rectifier_(rectifier),
       left_sf_(it_, "camera/left/image_raw", 1),
       right_sf_(it_, "camera/right/image_raw", 1) {
     use_exact_time_ = false;
@@ -273,7 +276,7 @@ void stereo::callback(const sensor_msgs::ImageConstPtr& left, const sensor_msgs:
     const auto timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(tp_1 - tp_0_).count();
 
     // input the current frame and estimate the camera pose
-    auto cam_pose_wc = SLAM_.feed_stereo_frame(leftcv, rightcv, timestamp, mask_);
+    auto cam_pose_wc = slam_->feed_stereo_frame(leftcv, rightcv, timestamp, mask_);
 
     const auto tp_2 = std::chrono::steady_clock::now();
 
@@ -292,8 +295,9 @@ void stereo::callback(const sensor_msgs::ImageConstPtr& left, const sensor_msgs:
     }
 }
 
-rgbd::rgbd(const std::shared_ptr<stella_vslam::config>& cfg, const std::string& vocab_file_path, const std::string& mask_img_path)
-    : system(cfg, vocab_file_path, mask_img_path),
+rgbd::rgbd(const std::shared_ptr<stella_vslam::system>& slam,
+           const std::string& mask_img_path)
+    : system(slam, mask_img_path),
       color_sf_(it_, "camera/color/image_raw", 1),
       depth_sf_(it_, "camera/depth/image_raw", 1) {
     use_exact_time_ = false;
@@ -325,7 +329,7 @@ void rgbd::callback(const sensor_msgs::ImageConstPtr& color, const sensor_msgs::
     const auto timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(tp_1 - tp_0_).count();
 
     // input the current frame and estimate the camera pose
-    auto cam_pose_wc = SLAM_.feed_RGBD_frame(colorcv, depthcv, timestamp, mask_);
+    auto cam_pose_wc = slam_->feed_RGBD_frame(colorcv, depthcv, timestamp, mask_);
 
     const auto tp_2 = std::chrono::steady_clock::now();
 

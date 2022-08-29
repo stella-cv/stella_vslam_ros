@@ -156,6 +156,10 @@ find_package(yaml-cpp REQUIRED)
 set(spdlog_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/3rd/spdlog/include)
 include_directories(${spdlog_INCLUDE_DIR})
 
+# filesystem
+set(filesystem_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/3rd/filesystem/include)
+include_directories(${filesystem_INCLUDE_DIR})
+
 # popl
 set(popl_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/3rd/popl/include)
 include_directories(${popl_INCLUDE_DIR})
