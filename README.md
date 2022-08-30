@@ -2,6 +2,10 @@
 
 [stella_vslam](https://github.com/stella-cv/stella_vslam)'s ROS package.
 
+## Install instruction
+
+stella_vslam_ros uses submodules. Clone it with `git clone --recursive` or download submodules with `git submodule update --init --recursive`.
+
 ## Subscribed topics
 
 ### monocular setup
