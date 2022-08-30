@@ -37,9 +37,9 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
     // create a viewer object
     // and pass the frame_publisher and the map_publisher
 #ifdef USE_PANGOLIN_VIEWER
-    pangolin_viewer::viewer viewer(stella_vslam::util::yaml_optional_ref(cfg->yaml_node_, "PangolinViewer"), &SLAM, SLAM->get_frame_publisher(), SLAM->get_map_publisher());
+    pangolin_viewer::viewer viewer(stella_vslam::util::yaml_optional_ref(cfg->yaml_node_, "PangolinViewer"), SLAM, SLAM->get_frame_publisher(), SLAM->get_map_publisher());
 #elif USE_SOCKET_PUBLISHER
-    socket_publisher::publisher publisher(stella_vslam::util::yaml_optional_ref(cfg->yaml_node_, "SocketPublisher"), &SLAM, SLAM->get_frame_publisher(), SLAM->get_map_publisher());
+    socket_publisher::publisher publisher(stella_vslam::util::yaml_optional_ref(cfg->yaml_node_, "SocketPublisher"), SLAM, SLAM->get_frame_publisher(), SLAM->get_map_publisher());
 #endif
 
     // run the viewer in another thread
