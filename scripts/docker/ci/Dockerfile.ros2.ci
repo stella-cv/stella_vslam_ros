@@ -1,4 +1,4 @@
-FROM ros:galactic-ros1-bridge
+FROM ros:humble
 ENV DEBIAN_FRONTEND noninteractive
 
 # install dependencies via apt
@@ -40,25 +40,6 @@ ENV LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib:${LD_LIBRARY_PATH}
 
 ENV NVIDIA_VISIBLE_DEVICES ${NVIDIA_VISIBLE_DEVICES:-all}
 ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
-
-# DBoW2
-ARG DBOW2_COMMIT=687fcb74dd13717c46add667e3fbfa9828a7019f
-WORKDIR /tmp
-RUN set -x && \
-  git clone https://github.com/stella-cv/DBoW2.git && \
-  cd DBoW2 && \
-  git checkout ${DBOW2_COMMIT} && \
-  mkdir -p build && \
-  cd build && \
-  cmake \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} \
-    .. && \
-  make -j${NUM_THREADS} && \
-  make install && \
-  cd /tmp && \
-  rm -rf *
-ENV DBoW2_DIR=${CMAKE_INSTALL_PREFIX}/lib/cmake/DBoW2
 
 # Pangolin
 ARG PANGOLIN_COMMIT=ad8b5f83222291c51b4800d5a5873b0e90a0cf81
@@ -108,24 +89,23 @@ RUN set -x && \
   : "stella_vslam dependencies" && \
   apt-get update -y -qq && \
   apt-get install -y -qq \
-    ros-${ROS2_DISTRO}-libg2o && \
+    ros-${ROS_DISTRO}-libg2o && \
   : "remove cache" && \
   apt-get autoremove -y -qq && \
   rm -rf /var/lib/apt/lists/*
 
 RUN set -x && \
   apt-get update -y -qq && \
-  : "install ROS1 and ROS2" && \
+  : "install ROS2 packages" && \
   apt-get install -y -qq \
-    ros-${ROS2_DISTRO}-image-transport \
-    ros-${ROS2_DISTRO}-cv-bridge \
-    ros-${ROS2_DISTRO}-rosbag2-bag-v2-plugins \
-    ros-${ROS2_DISTRO}-ros2bag \
-    ros-${ROS2_DISTRO}-rosbag2-transport \
+    ros-${ROS_DISTRO}-image-transport \
+    ros-${ROS_DISTRO}-cv-bridge \
+    ros-${ROS_DISTRO}-ros2bag \
+    ros-${ROS_DISTRO}-rosbag2-transport \
     python3-pip \
     python3-colcon-common-extensions && \
   pip3 install -U \
-    argcomplete && \
+    argcomplete rosbags && \
   : "remove cache" && \
   apt-get autoremove -y -qq && \
   rm -rf /var/lib/apt/lists/*
@@ -135,7 +115,7 @@ RUN set -x && \
   : "ci dependencies" && \
   apt-get install -y -qq \
     ccache \
-    clang-format-6.0 && \
+    clang-format && \
   apt-get autoremove -y -qq && \
   rm -rf /var/lib/apt/lists/*
 

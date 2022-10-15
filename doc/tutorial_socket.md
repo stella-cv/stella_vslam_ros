@@ -297,9 +297,10 @@ Build docker image with rosbag installed and launch container of stella_vslam-ro
 ```
 
 ```shell-session
-root@hostname:/# source /opt/ros/${ROS1_DISTRO}/setup.bash
-root@hostname:/# source /opt/ros/${ROS2_DISTRO}/setup.bash
-root@hostname:/# ros2 bag play -s rosbag_v2 /path/to/rosbagfile.bag
+root@hostname:/# source /opt/ros/${ROS_DISTRO}/setup.bash
+root@hostname:/# rosbags-convert /datasets/EuRoC/MH_04_difficult.bag ./MH_04_difficult
+root@hostname:/# ros2 bag play /path/to/rosbagfile.bag ./rosbagfile
+root@hostname:/# ros2 bag play ./rosbagfile
 ```
 
 You can see the mapping and tracking in your localhost browser.
@@ -333,5 +334,6 @@ root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_localization -v ./orb_voca
 Terminal5:
 
 ```shell-session
-root@hostname:/# ros2 bag play -s rosbag_v2 /path/to/rosbagfile.bag
+root@hostname:/# ros2 bag play /path/to/rosbagfile.bag ./rosbagfile
+root@hostname:/# ros2 bag play ./rosbagfile
 ```
