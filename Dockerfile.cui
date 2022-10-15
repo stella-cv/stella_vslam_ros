@@ -1,4 +1,4 @@
-FROM ros:galactic
+FROM ros:humble
 ENV DEBIAN_FRONTEND noninteractive
 
 # install dependencies via apt
