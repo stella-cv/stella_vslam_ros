@@ -9,7 +9,7 @@
 If you are going to use non RGBD setup then exceute following in your terminal.
 
 ```shell
-~$ git clone https://github.com/stella-cv/stella_vslam_ros.git
+~$ git clone --recursive https://github.com/stella-cv/stella_vslam_ros.git
 ```
 
 (If you are going to use RGBD setup then refer <https://github.com/stella-cv/stella_vslam_ros/issues/32>.)
@@ -35,7 +35,7 @@ You can accelerate the build of the docker image with `--build-arg NUM_THREADS=<
 Execute the following commands:
 
 ```shell
-~$ git clone https://github.com/stella-cv/stella_vslam.git
+~$ git clone --recursive https://github.com/stella-cv/stella_vslam.git
 ~$ cd stella_vslam/viewer
 ~/stella_vslam/viewer$ docker build -t stella_vslam-ros-server .
 ```
@@ -109,7 +109,7 @@ Run it in slam mode for run tracking and mapping. Please memtion the appropriate
 ```shell-session
 root@hostname:/ros2_ws# source /opt/ros/${ROS_DISTRO}/setup.bash
 root@hostname:/ros2_ws# source /ros2_ws/install/setup.bash
-root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_slam -v ./orb_vocab.fbow -c /path/to/config.yaml --map-db ./usb_camera.msg
+root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_slam -v ./orb_vocab.fbow -c /path/to/config.yaml --map-db-out ./usb_camera.msg
 ```
 
 You can see the mapping and tracking in your localhost browser.
@@ -137,7 +137,7 @@ Terminal3:
 Run localization
 
 ```shell-session
-root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_localization -v ./orb_vocab.fbow -c /path/to/config.yaml --map-db ./usb_camera.msg
+root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_slam --disable-mapping -v ./orb_vocab.fbow -c /path/to/config.yaml --map-db-in ./usb_camera.msg
 ```
 
 ### Step 5.2: Using VIDEO file
@@ -208,7 +208,7 @@ Terminal4:
 ```shell-session
 root@hostname:/ros2_ws# source /opt/ros/${ROS_DISTRO}/setup.bash
 root@hostname:/ros2_ws# source /ros2_ws/install/setup.bash
-root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_slam -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db aist_living_lab_1_map.msg
+root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_slam -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db-out aist_living_lab_1_map.msg
 ```
 
 You can see the mapping and tracking in your localhost browser.
@@ -236,7 +236,7 @@ Terminal4:
 Run localization
 
 ```shell-session
-root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_localization -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db aist_living_lab_1_map.msg
+root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_slam --disable-mapping -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db-in aist_living_lab_1_map.msg
 ```
 
 ### Step 5.3: Using ROSBAG file
@@ -282,7 +282,7 @@ Terminal4:
 ```shell-session
 root@hostname:/ros2_ws# source /opt/ros/${ROS_DISTRO}/setup.bash
 root@hostname:/ros2_ws# source /ros2_ws/install/setup.bash
-root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_slam -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db /path/to/message.msg --ros-args -r /camera/image_raw:=/cam0/image_raw
+root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_slam -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db-out /path/to/message.msg --ros-args -r /camera/image_raw:=/cam0/image_raw
 ```
 
 Terminal5:
@@ -328,7 +328,7 @@ Terminal4:
 Run localization
 
 ```shell-session
-root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_localization -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db /path/to/message.msg --ros-args -r /camera/image_raw:=/cam0/image_raw
+root@hostname:/ros2_ws# ros2 run stella_vslam_ros run_slam --disable-mapping -v ./orb_vocab.fbow -c /path/to/config.yaml --frame-skip 1 --map-db-in /path/to/message.msg --ros-args -r /camera/image_raw:=/cam0/image_raw
 ```
 
 Terminal5:
