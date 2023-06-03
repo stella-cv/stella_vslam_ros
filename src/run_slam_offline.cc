@@ -42,6 +42,7 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
               const bool eval_log,
               const std::string& map_db_path,
               const std::string& bag_path,
+              const std::string& camera_name,
               const bool no_sleep) {
     auto& SLAM = slam_ros->slam_;
 
@@ -91,7 +92,7 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
         while (rclcpp::ok()) {
             while (reader.has_next() && que.size() < 2) {
                 auto bag_message = reader.read_next();
-                if (bag_message->topic_name == "camera/image_raw") {
+                if (bag_message->topic_name == "/" + camera_name + "/image_raw") {
                     auto msg = std::make_shared<sensor_msgs::msg::Image>();
                     rclcpp::SerializedMessage serialized_msg(*bag_message->serialized_data);
                     serialization.deserialize_message(&serialized_msg, msg.get());
@@ -171,6 +172,7 @@ int main(int argc, char* argv[]) {
     popl::OptionParser op("Allowed options");
     auto help = op.add<popl::Switch>("h", "help", "produce help message");
     auto bag_path = op.add<popl::Value<std::string>>("b", "bag", "rosbag2 file path");
+    auto camera_name = op.add<popl::Value<std::string>>("", "camera", "image topic name must be <camera_name>/image_raw", "camera");
     auto vocab_file_path = op.add<popl::Value<std::string>>("v", "vocab", "vocabulary file path");
     auto setting_file_path = op.add<popl::Value<std::string>>("c", "config", "setting file path");
     auto mask_img_path = op.add<popl::Value<std::string>>("", "mask", "mask image path", "");
@@ -268,6 +270,7 @@ int main(int argc, char* argv[]) {
         cfg, eval_log->is_set(),
         map_db_path_out->value(),
         bag_path->value(),
+        camera_name->value(),
         no_sleep->is_set());
 
 #ifdef USE_GOOGLE_PERFTOOLS
