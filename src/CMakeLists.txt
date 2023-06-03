@@ -10,7 +10,8 @@ set(EXECUTABLE_TARGETS "")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_executable(run_slam run_slam.cc stella_vslam_ros.cc)
-list(APPEND EXECUTABLE_TARGETS run_slam)
+add_executable(run_slam_offline run_slam_offline.cc stella_vslam_ros.cc)
+list(APPEND EXECUTABLE_TARGETS run_slam run_slam_offline)
 
 foreach(EXECUTABLE_TARGET IN LISTS EXECUTABLE_TARGETS)
     # pangolin_viewer is used on a priority basis
@@ -69,7 +70,8 @@ foreach(EXECUTABLE_TARGET IN LISTS EXECUTABLE_TARGETS)
                               tf2_eigen
                               tf2_geometry_msgs
                               tf2_msgs
-                              tf2_ros)
+                              tf2_ros
+                              rosbag2_cpp)
     install(TARGETS ${EXECUTABLE_TARGET}
             DESTINATION lib/${PROJECT_NAME})
 
