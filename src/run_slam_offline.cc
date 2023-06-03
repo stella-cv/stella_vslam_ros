@@ -43,6 +43,7 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
               const std::string& map_db_path,
               const std::string& bag_path,
               const std::string& camera_name,
+              const std::string& bag_storage_id,
               const bool no_sleep) {
     auto& SLAM = slam_ros->slam_;
 
@@ -83,8 +84,12 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
     // read rosbag and run SLAM
     if (slam_ros->slam_->get_camera()->setup_type_ == stella_vslam::camera::setup_type_t::Monocular) {
         auto mono = std::static_pointer_cast<stella_vslam_ros::mono>(slam_ros);
+        RCLCPP_INFO_STREAM(slam_ros->node_->get_logger(), "Open " << bag_path << "(storage_id=" << bag_storage_id << ")");
+        rosbag2_storage::StorageOptions storage_options;
+        storage_options.uri = bag_path;
+        storage_options.storage_id = bag_storage_id;
         rosbag2_cpp::Reader reader;
-        reader.open(bag_path);
+        reader.open(storage_options);
         rclcpp::Serialization<sensor_msgs::msg::Image> serialization;
         std::queue<std::shared_ptr<sensor_msgs::msg::Image>> que;
         double track_time;
@@ -173,6 +178,7 @@ int main(int argc, char* argv[]) {
     auto help = op.add<popl::Switch>("h", "help", "produce help message");
     auto bag_path = op.add<popl::Value<std::string>>("b", "bag", "rosbag2 file path");
     auto camera_name = op.add<popl::Value<std::string>>("", "camera", "image topic name must be <camera_name>/image_raw", "camera");
+    auto bag_storage_id = op.add<popl::Value<std::string>>("", "storage-id", "rosbag2 storage id (default: sqlite3)", "sqlite3");
     auto vocab_file_path = op.add<popl::Value<std::string>>("v", "vocab", "vocabulary file path");
     auto setting_file_path = op.add<popl::Value<std::string>>("c", "config", "setting file path");
     auto mask_img_path = op.add<popl::Value<std::string>>("", "mask", "mask image path", "");
@@ -271,6 +277,7 @@ int main(int argc, char* argv[]) {
         map_db_path_out->value(),
         bag_path->value(),
         camera_name->value(),
+        bag_storage_id->value(),
         no_sleep->is_set());
 
 #ifdef USE_GOOGLE_PERFTOOLS
