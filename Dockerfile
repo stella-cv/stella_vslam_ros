@@ -26,7 +26,6 @@ RUN set -x && \
     libglew-dev && \
   : "other dependencies" && \
   apt-get install -y -qq \
-    libgoogle-glog-dev \
     libyaml-cpp-dev \ 
     libopencv-dev \
     libeigen3-dev && \
