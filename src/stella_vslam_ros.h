@@ -61,6 +61,34 @@ public:
     image_transport::Subscriber sub_;
 };
 
+template<class M, class NodeType = rclcpp::Node>
+class ModifiedSubscriber : public message_filters::Subscriber<M> {
+public:
+    ModifiedSubscriber(typename message_filters::Subscriber<M>::NodePtr node, const std::string& topic, const rmw_qos_profile_t qos = rmw_qos_profile_default)
+        : message_filters::Subscriber<M>(node, topic, qos) {
+    }
+    ModifiedSubscriber(NodeType* node, const std::string& topic, const rmw_qos_profile_t qos = rmw_qos_profile_default)
+        : message_filters::Subscriber<M>(node, topic, qos) {
+    }
+    ModifiedSubscriber(
+        typename message_filters::Subscriber<M>::NodePtr node,
+        const std::string& topic,
+        const rmw_qos_profile_t qos,
+        rclcpp::SubscriptionOptions options)
+        : message_filters::Subscriber<M>(node, topic, qos, options) {
+    }
+    ModifiedSubscriber(
+        NodeType* node,
+        const std::string& topic,
+        const rmw_qos_profile_t qos,
+        rclcpp::SubscriptionOptions options)
+        : message_filters::Subscriber<M>(node, topic, qos, options) {
+    }
+    void cb(const typename message_filters::Subscriber<M>::MConstPtr& msg) {
+        this->signalMessage(msg);
+    }
+};
+
 class stereo : public system {
 public:
     stereo(const std::shared_ptr<stella_vslam::system>& slam,
@@ -69,7 +97,7 @@ public:
     void callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const sensor_msgs::msg::Image::ConstSharedPtr& right);
 
     std::shared_ptr<stella_vslam::util::stereo_rectifier> rectifier_;
-    message_filters::Subscriber<sensor_msgs::msg::Image> left_sf_, right_sf_;
+    ModifiedSubscriber<sensor_msgs::msg::Image> left_sf_, right_sf_;
     using ApproximateTimeSyncPolicy = message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image, sensor_msgs::msg::Image>;
     std::shared_ptr<ApproximateTimeSyncPolicy::Sync> approx_time_sync_;
     using ExactTimeSyncPolicy = message_filters::sync_policies::ExactTime<sensor_msgs::msg::Image, sensor_msgs::msg::Image>;
@@ -83,7 +111,7 @@ public:
          const std::string& mask_img_path);
     void callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const sensor_msgs::msg::Image::ConstSharedPtr& depth);
 
-    message_filters::Subscriber<sensor_msgs::msg::Image> color_sf_, depth_sf_;
+    ModifiedSubscriber<sensor_msgs::msg::Image> color_sf_, depth_sf_;
     using ApproximateTimeSyncPolicy = message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image, sensor_msgs::msg::Image>;
     std::shared_ptr<ApproximateTimeSyncPolicy::Sync> approx_time_sync_;
     using ExactTimeSyncPolicy = message_filters::sync_policies::ExactTime<sensor_msgs::msg::Image, sensor_msgs::msg::Image>;

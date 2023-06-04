@@ -43,6 +43,10 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
               const std::string& map_db_path,
               const std::string& bag_path,
               const std::string& camera_name,
+              const std::string& left_namespace,
+              const std::string& right_namespace,
+              const std::string& rgb_namespace,
+              const std::string& depth_namespace,
               const std::string& bag_storage_id,
               const bool no_sleep) {
     auto& SLAM = slam_ros->slam_;
@@ -82,18 +86,17 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
 #endif
 
     // read rosbag and run SLAM
+    RCLCPP_INFO_STREAM(slam_ros->node_->get_logger(), "Open " << bag_path << "(storage_id=" << bag_storage_id << ")");
+    rosbag2_storage::StorageOptions storage_options;
+    storage_options.uri = bag_path;
+    storage_options.storage_id = bag_storage_id;
+    rosbag2_cpp::Reader reader;
+    reader.open(storage_options);
+    rclcpp::Serialization<sensor_msgs::msg::Image> serialization;
+    std::queue<std::shared_ptr<sensor_msgs::msg::Image>> que;
+    double track_time;
     if (slam_ros->slam_->get_camera()->setup_type_ == stella_vslam::camera::setup_type_t::Monocular) {
         auto mono = std::static_pointer_cast<stella_vslam_ros::mono>(slam_ros);
-        RCLCPP_INFO_STREAM(slam_ros->node_->get_logger(), "Open " << bag_path << "(storage_id=" << bag_storage_id << ")");
-        rosbag2_storage::StorageOptions storage_options;
-        storage_options.uri = bag_path;
-        storage_options.storage_id = bag_storage_id;
-        rosbag2_cpp::Reader reader;
-        reader.open(storage_options);
-        rclcpp::Serialization<sensor_msgs::msg::Image> serialization;
-        std::queue<std::shared_ptr<sensor_msgs::msg::Image>> que;
-        double track_time;
-
         while (rclcpp::ok()) {
             while (reader.has_next() && que.size() < 2) {
                 auto bag_message = reader.read_next();
@@ -109,6 +112,88 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
             }
             const auto tp_1 = std::chrono::steady_clock::now();
             mono->callback(que.front());
+            const auto tp_2 = std::chrono::steady_clock::now();
+            track_time = std::chrono::duration_cast<std::chrono::duration<double>>(tp_2 - tp_1).count();
+
+            // wait until the timestamp of the next frame
+            if (!no_sleep && que.size() == 2) {
+                const auto wait_time = (rclcpp::Time(que.back()->header.stamp) - rclcpp::Time(que.front()->header.stamp)).seconds() + track_time;
+                if (0.0 < wait_time) {
+                    std::this_thread::sleep_for(std::chrono::microseconds(static_cast<unsigned int>(wait_time * 1e6)));
+                }
+            }
+            que.pop();
+        }
+    }
+    else if (slam_ros->slam_->get_camera()->setup_type_ == stella_vslam::camera::setup_type_t::Stereo) {
+        auto stereo = std::static_pointer_cast<stella_vslam_ros::stereo>(slam_ros);
+        std::queue<std::shared_ptr<sensor_msgs::msg::Image>> que_right;
+        while (rclcpp::ok()) {
+            while (reader.has_next() && que.size() < 2) {
+                auto bag_message = reader.read_next();
+                if (bag_message->topic_name == "/" + camera_name + "/" + left_namespace + "/image_raw") {
+                    auto msg = std::make_shared<sensor_msgs::msg::Image>();
+                    rclcpp::SerializedMessage serialized_msg(*bag_message->serialized_data);
+                    serialization.deserialize_message(&serialized_msg, msg.get());
+                    que.push(msg);
+                }
+                if (bag_message->topic_name == "/" + camera_name + "/" + right_namespace + "/image_raw") {
+                    auto msg = std::make_shared<sensor_msgs::msg::Image>();
+                    rclcpp::SerializedMessage serialized_msg(*bag_message->serialized_data);
+                    serialization.deserialize_message(&serialized_msg, msg.get());
+                    que_right.push(msg);
+                }
+            }
+            if (que.size() == 0) {
+                break;
+            }
+            const auto tp_1 = std::chrono::steady_clock::now();
+            stereo->left_sf_.cb(que.front());
+            if (que_right.size() > 0) {
+                stereo->right_sf_.cb(que_right.front());
+                que_right.pop();
+            }
+            const auto tp_2 = std::chrono::steady_clock::now();
+            track_time = std::chrono::duration_cast<std::chrono::duration<double>>(tp_2 - tp_1).count();
+
+            // wait until the timestamp of the next frame
+            if (!no_sleep && que.size() == 2) {
+                const auto wait_time = (rclcpp::Time(que.back()->header.stamp) - rclcpp::Time(que.front()->header.stamp)).seconds() + track_time;
+                if (0.0 < wait_time) {
+                    std::this_thread::sleep_for(std::chrono::microseconds(static_cast<unsigned int>(wait_time * 1e6)));
+                }
+            }
+            que.pop();
+        }
+    }
+    else if (slam_ros->slam_->get_camera()->setup_type_ == stella_vslam::camera::setup_type_t::RGBD) {
+        auto rgbd = std::static_pointer_cast<stella_vslam_ros::rgbd>(slam_ros);
+        std::queue<std::shared_ptr<sensor_msgs::msg::Image>> que_depth;
+        while (rclcpp::ok()) {
+            while (reader.has_next() && que.size() < 2) {
+                auto bag_message = reader.read_next();
+                if (bag_message->topic_name == "/" + camera_name + "/" + rgb_namespace + "/image_raw") {
+                    auto msg = std::make_shared<sensor_msgs::msg::Image>();
+                    rclcpp::SerializedMessage serialized_msg(*bag_message->serialized_data);
+                    serialization.deserialize_message(&serialized_msg, msg.get());
+                    que.push(msg);
+                }
+                if (bag_message->topic_name == "/" + camera_name + "/" + depth_namespace + "/image_raw") {
+                    auto msg = std::make_shared<sensor_msgs::msg::Image>();
+                    rclcpp::SerializedMessage serialized_msg(*bag_message->serialized_data);
+                    serialization.deserialize_message(&serialized_msg, msg.get());
+                    que_depth.push(msg);
+                }
+            }
+            if (que.size() == 0) {
+                break;
+            }
+            const auto tp_1 = std::chrono::steady_clock::now();
+            rgbd->color_sf_.cb(que.front());
+            if (que_depth.size() > 0) {
+                rgbd->depth_sf_.cb(que_depth.front());
+                que_depth.pop();
+            }
             const auto tp_2 = std::chrono::steady_clock::now();
             track_time = std::chrono::duration_cast<std::chrono::duration<double>>(tp_2 - tp_1).count();
 
@@ -177,7 +262,11 @@ int main(int argc, char* argv[]) {
     popl::OptionParser op("Allowed options");
     auto help = op.add<popl::Switch>("h", "help", "produce help message");
     auto bag_path = op.add<popl::Value<std::string>>("b", "bag", "rosbag2 file path");
-    auto camera_name = op.add<popl::Value<std::string>>("", "camera", "image topic name must be <camera_name>/image_raw", "camera");
+    auto camera_name = op.add<popl::Value<std::string>>("", "camera", "(for monocular) image topic name must be <camera_name>/image_raw. (for stereo/RGBD) See description of other options for image topic names.", "camera");
+    auto left_namespace = op.add<popl::Value<std::string>>("", "left", "(for stereo) left image topic name must be <camera_name>/<left_namespace>/image_raw", "left");
+    auto right_namespace = op.add<popl::Value<std::string>>("", "right", "(for stereo) right image topic name must be <camera_name>/<right_namespace>/image_raw", "right");
+    auto rgb_namespace = op.add<popl::Value<std::string>>("", "rgb", "(for RGBD) image topic name must be <camera_name>/<rgb_namespace>/image_raw", "rgb");
+    auto depth_namespace = op.add<popl::Value<std::string>>("", "depth", "(for RGBD) depth image topic name must be <camera_name>/<depth_namespace>/image_raw", "depth");
     auto bag_storage_id = op.add<popl::Value<std::string>>("", "storage-id", "rosbag2 storage id (default: sqlite3)", "sqlite3");
     auto vocab_file_path = op.add<popl::Value<std::string>>("v", "vocab", "vocabulary file path");
     auto setting_file_path = op.add<popl::Value<std::string>>("c", "config", "setting file path");
@@ -277,6 +366,10 @@ int main(int argc, char* argv[]) {
         map_db_path_out->value(),
         bag_path->value(),
         camera_name->value(),
+        left_namespace->value(),
+        right_namespace->value(),
+        rgb_namespace->value(),
+        depth_namespace->value(),
         bag_storage_id->value(),
         no_sleep->is_set());
 
