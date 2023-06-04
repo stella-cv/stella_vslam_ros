@@ -2,6 +2,10 @@
 
 [stella_vslam](https://github.com/stella-cv/stella_vslam)'s ROS package.
 
+## Documentation
+
+See [here](https://stella-cv.readthedocs.io/en/latest/ros2_package.html).
+
 ## Install instruction
 
 stella_vslam_ros uses submodules. Clone it with `git clone --recursive` or download submodules with `git submodule update --init --recursive`.
@@ -39,3 +43,7 @@ stella_vslam_ros uses submodules. Clone it with `git clone --recursive` or downl
 ## Tutorial
 
 Users unfamiliar with docker, ROS2, or stella_vslam should refer to the [tutorial](/doc/tutorial.md).
+
+## TIPS
+
+- run_slam_offline node allows you to run SLAM by reading the rosbag2 file directly.
