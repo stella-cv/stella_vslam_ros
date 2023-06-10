@@ -42,11 +42,11 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
               const bool eval_log,
               const std::string& map_db_path,
               const std::string& bag_path,
-              const std::string& camera_name,
-              const std::string& left_namespace,
-              const std::string& right_namespace,
-              const std::string& rgb_namespace,
-              const std::string& depth_namespace,
+              const std::string& camera_topic,
+              const std::string& left_topic,
+              const std::string& right_topic,
+              const std::string& color_topic,
+              const std::string& depth_topic,
               const std::string& bag_storage_id,
               const bool no_sleep) {
     auto& SLAM = slam_ros->slam_;
@@ -100,7 +100,7 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
         while (rclcpp::ok()) {
             while (reader.has_next() && que.size() < 2) {
                 auto bag_message = reader.read_next();
-                if (bag_message->topic_name == "/" + camera_name + "/image_raw") {
+                if (bag_message->topic_name == camera_topic) {
                     auto msg = std::make_shared<sensor_msgs::msg::Image>();
                     rclcpp::SerializedMessage serialized_msg(*bag_message->serialized_data);
                     serialization.deserialize_message(&serialized_msg, msg.get());
@@ -131,13 +131,13 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
         while (rclcpp::ok()) {
             while (reader.has_next() && que.size() < 2) {
                 auto bag_message = reader.read_next();
-                if (bag_message->topic_name == "/" + camera_name + "/" + left_namespace + "/image_raw") {
+                if (bag_message->topic_name == left_topic) {
                     auto msg = std::make_shared<sensor_msgs::msg::Image>();
                     rclcpp::SerializedMessage serialized_msg(*bag_message->serialized_data);
                     serialization.deserialize_message(&serialized_msg, msg.get());
                     que.push(msg);
                 }
-                if (bag_message->topic_name == "/" + camera_name + "/" + right_namespace + "/image_raw") {
+                if (bag_message->topic_name == right_topic) {
                     auto msg = std::make_shared<sensor_msgs::msg::Image>();
                     rclcpp::SerializedMessage serialized_msg(*bag_message->serialized_data);
                     serialization.deserialize_message(&serialized_msg, msg.get());
@@ -172,13 +172,13 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
         while (rclcpp::ok()) {
             while (reader.has_next() && que.size() < 2) {
                 auto bag_message = reader.read_next();
-                if (bag_message->topic_name == "/" + camera_name + "/" + rgb_namespace + "/image_raw") {
+                if (bag_message->topic_name == color_topic) {
                     auto msg = std::make_shared<sensor_msgs::msg::Image>();
                     rclcpp::SerializedMessage serialized_msg(*bag_message->serialized_data);
                     serialization.deserialize_message(&serialized_msg, msg.get());
                     que.push(msg);
                 }
-                if (bag_message->topic_name == "/" + camera_name + "/" + depth_namespace + "/image_raw") {
+                if (bag_message->topic_name == depth_topic) {
                     auto msg = std::make_shared<sensor_msgs::msg::Image>();
                     rclcpp::SerializedMessage serialized_msg(*bag_message->serialized_data);
                     serialization.deserialize_message(&serialized_msg, msg.get());
@@ -262,11 +262,11 @@ int main(int argc, char* argv[]) {
     popl::OptionParser op("Allowed options");
     auto help = op.add<popl::Switch>("h", "help", "produce help message");
     auto bag_path = op.add<popl::Value<std::string>>("b", "bag", "rosbag2 file path");
-    auto camera_name = op.add<popl::Value<std::string>>("", "camera", "(for monocular) image topic name must be <camera_name>/image_raw. (for stereo/RGBD) See description of other options for image topic names.", "camera");
-    auto left_namespace = op.add<popl::Value<std::string>>("", "left", "(for stereo) left image topic name must be <camera_name>/<left_namespace>/image_raw", "left");
-    auto right_namespace = op.add<popl::Value<std::string>>("", "right", "(for stereo) right image topic name must be <camera_name>/<right_namespace>/image_raw", "right");
-    auto rgb_namespace = op.add<popl::Value<std::string>>("", "rgb", "(for RGBD) image topic name must be <camera_name>/<rgb_namespace>/image_raw", "rgb");
-    auto depth_namespace = op.add<popl::Value<std::string>>("", "depth", "(for RGBD) depth image topic name must be <camera_name>/<depth_namespace>/image_raw", "depth");
+    auto camera_topic = op.add<popl::Value<std::string>>("", "camera", "image topic name for monoculari", "camera/image_raw");
+    auto left_topic = op.add<popl::Value<std::string>>("", "left", "left image topic name for stereo", "camera/left/image_raw");
+    auto right_topic = op.add<popl::Value<std::string>>("", "right", "right image topic name for stereo", "camera/right/image_raw");
+    auto color_topic = op.add<popl::Value<std::string>>("", "color", "color image topic name for RGBD", "camera/color/image_raw");
+    auto depth_topic = op.add<popl::Value<std::string>>("", "depth", "depth image topic name for RGBD", "camera/depth/image_raw");
     auto bag_storage_id = op.add<popl::Value<std::string>>("", "storage-id", "rosbag2 storage id (default: sqlite3)", "sqlite3");
     auto vocab_file_path = op.add<popl::Value<std::string>>("v", "vocab", "vocabulary file path");
     auto setting_file_path = op.add<popl::Value<std::string>>("c", "config", "setting file path");
@@ -365,11 +365,11 @@ int main(int argc, char* argv[]) {
         cfg, eval_log->is_set(),
         map_db_path_out->value(),
         bag_path->value(),
-        camera_name->value(),
-        left_namespace->value(),
-        right_namespace->value(),
-        rgb_namespace->value(),
-        depth_namespace->value(),
+        camera_topic->value(),
+        left_topic->value(),
+        right_topic->value(),
+        color_topic->value(),
+        depth_topic->value(),
         bag_storage_id->value(),
         no_sleep->is_set());
 
