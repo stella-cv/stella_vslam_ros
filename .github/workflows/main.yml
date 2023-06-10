@@ -84,7 +84,7 @@ jobs:
           pkill -SIGINT -f static_transform_publisher
       - name: run slam offline (stereo)
         run: |
-          (source /opt/ros/${ROS_DISTRO}/setup.bash && source /ros_ws/install/setup.bash && ros2 run stella_vslam_ros run_slam_offline -b MH_04_difficult -r -v /datasets/orb_vocab/orb_vocab.fbow -c /ros_ws/src/stella_vslam/example/euroc/EuRoC_stereo.yaml --map-db-out map_stereo.msg --left=/cam0/image_raw --right=/cam1/image_raw --ros-args -p publish_tf:=false)&
+          (source /opt/ros/${ROS_DISTRO}/setup.bash && source /ros_ws/install/setup.bash && ros2 run stella_vslam_ros run_slam_offline -b MH_04_difficult -r -v /datasets/orb_vocab/orb_vocab.fbow -c /ros_ws/src/stella_vslam/example/euroc/EuRoC_stereo.yaml --map-db-out map_stereo.msg --left=/cam0/image_raw --right=/cam1/image_raw --ros-args -p publish_tf:=false)
 
   rosdep:
     runs-on: ubuntu-latest
