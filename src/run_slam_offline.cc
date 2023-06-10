@@ -36,6 +36,7 @@ namespace fs = ghc::filesystem;
 #include <rclcpp/serialized_message.hpp>
 #include <rosbag2_cpp/reader.hpp>
 #include <rosbag2_cpp/readers/sequential_reader.hpp>
+#include <rosbag2_storage/default_storage_id.hpp>
 
 void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
               const std::shared_ptr<stella_vslam::config>& cfg,
@@ -267,7 +268,7 @@ int main(int argc, char* argv[]) {
     auto right_topic = op.add<popl::Value<std::string>>("", "right", "right image topic name for stereo", "camera/right/image_raw");
     auto color_topic = op.add<popl::Value<std::string>>("", "color", "color image topic name for RGBD", "camera/color/image_raw");
     auto depth_topic = op.add<popl::Value<std::string>>("", "depth", "depth image topic name for RGBD", "camera/depth/image_raw");
-    auto bag_storage_id = op.add<popl::Value<std::string>>("", "storage-id", "rosbag2 storage id (default: sqlite3)", "sqlite3");
+    auto bag_storage_id = op.add<popl::Value<std::string>>("", "storage-id", "rosbag2 storage id (default: " + rosbag2_storage::get_default_storage_id() + ")", rosbag2_storage::get_default_storage_id());
     auto vocab_file_path = op.add<popl::Value<std::string>>("v", "vocab", "vocabulary file path");
     auto setting_file_path = op.add<popl::Value<std::string>>("c", "config", "setting file path");
     auto mask_img_path = op.add<popl::Value<std::string>>("", "mask", "mask image path", "");
