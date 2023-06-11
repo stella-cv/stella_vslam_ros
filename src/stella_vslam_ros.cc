@@ -170,7 +170,7 @@ void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
         camera_optical_frame_ = msg->header.frame_id;
     }
     const rclcpp::Time tp_1 = node_->now();
-    const double timestamp = tp_1.seconds();
+    const double timestamp = rclcpp::Time(msg->header.stamp).seconds();
 
     // input the current frame and estimate the camera pose
     auto cam_pose_wc = slam_->feed_monocular_frame(cv_bridge::toCvShare(msg)->image, timestamp, mask_);
@@ -178,7 +178,7 @@ void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
     const rclcpp::Time tp_2 = node_->now();
     const double track_time = (tp_2 - tp_1).seconds();
 
-    //track times in seconds
+    // track times in seconds
     track_times_.push_back(track_time);
 
     if (cam_pose_wc) {
@@ -220,7 +220,7 @@ void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const
     }
 
     const rclcpp::Time tp_1 = node_->now();
-    const double timestamp = tp_1.seconds();
+    const double timestamp = rclcpp::Time(left->header.stamp).seconds();
 
     // input the current frame and estimate the camera pose
     auto cam_pose_wc = slam_->feed_stereo_frame(leftcv, rightcv, timestamp, mask_);
@@ -228,7 +228,7 @@ void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const
     const rclcpp::Time tp_2 = node_->now();
     const double track_time = (tp_2 - tp_1).seconds();
 
-    //track times in seconds
+    // track times in seconds
     track_times_.push_back(track_time);
 
     if (cam_pose_wc) {
@@ -266,7 +266,7 @@ void rgbd::callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const 
     }
 
     const rclcpp::Time tp_1 = node_->now();
-    const double timestamp = tp_1.seconds();
+    const double timestamp = rclcpp::Time(color->header.stamp).seconds();
 
     // input the current frame and estimate the camera pose
     auto cam_pose_wc = slam_->feed_RGBD_frame(colorcv, depthcv, timestamp, mask_);
