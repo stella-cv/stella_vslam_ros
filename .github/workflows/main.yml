@@ -106,33 +106,36 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: stella-cv/stella_vslam
-          path: stella_vslam
+          path: lib/stella_vslam
           submodules: recursive
-      - name: install stella_vslam
-        run: |
-          cd stella_vslam
-          rosdep update
-          apt update
-          rosdep install -y -i --from-paths .
-          mkdir build
-          cd build
-          source /opt/ros/${ROS_DISTRO}/setup.bash # need to find libg2o
-          cmake -DCMAKE_BUILD_TYPE=Debug ..
-          make -j $(($(nproc) / 2))
-          make install
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: install dependencies for stella_vslam_ros
-        run: |
-          mkdir -p /ros_ws/src
-          cp -r . /ros_ws/src/stella_vslam_ros
-          cd /ros_ws
-          rosdep update
-          apt update
-          rosdep install -y -i --from-paths src --skip-keys=stella_vslam
+          path: ros_ws/src/stella_vslam_ros
       - name: build stella_vslam_ros
         run: |
-          cd /ros_ws
+          rosdep update
+          apt update
+          cd $GITHUB_WORKSPACE
+          rosdep install -y -i --from-paths lib
+          cd $GITHUB_WORKSPACE/lib/stella_vslam
+          mkdir -p $GITHUB_WORKSPACE/lib/stella_vslam/build
+          cd $GITHUB_WORKSPACE/lib/stella_vslam/build
+          source /opt/ros/${ROS_DISTRO}/setup.bash
+          USE_PANGOLIN_VIEWER=OFF
+          USE_SOCKET_PUBLISHER=OFF
+          cmake .. \
+            -DUSE_STACK_TRACE_LOGGER=ON \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DUSE_PANGOLIN_VIEWER=$USE_PANGOLIN_VIEWER \
+            -DINSTALL_PANGOLIN_VIEWER=$USE_PANGOLIN_VIEWER \
+            -DUSE_SOCKET_PUBLISHER=$USE_SOCKET_PUBLISHER \
+            -DINSTALL_SOCKET_PUBLISHER=$USE_SOCKET_PUBLISHER \
+            -DBUILD_EXAMPLES=ON \
+            ..
+          make -j$(($(nproc) / 2))
+          make install
+          cd $GITHUB_WORKSPACE/ros_ws
+          rosdep install -y -i --from-paths src --skip-keys=stella_vslam
           source /opt/ros/${ROS_DISTRO}/setup.bash
           catkin_make -j$(($(nproc) / 2))
