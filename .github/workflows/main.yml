@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ ros ]
+    branches: [ros]
   pull_request:
-    branches: [ ros ]
+    branches: [ros]
 
   workflow_dispatch:
 
@@ -15,9 +15,9 @@ jobs:
       - uses: actions/checkout@v3
       - uses: DoozyX/clang-format-lint-action@v0.12
         with:
-          source: '.'
-          exclude: './3rd'
-          extensions: 'h,cc'
+          source: "."
+          exclude: "./3rd"
+          extensions: "h,cc"
           clangFormatVersion: 6
           style: file
           inplace: False
@@ -91,3 +91,48 @@ jobs:
           pkill -SIGINT -f run_slam
           pkill -SIGINT -f static_transform_publisher
           pkill -SIGINT roscore
+
+  rosdep:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    container:
+      image: ghcr.io/ymd-stella/stella-cv/ros:noetic-ros-base-with-git
+      env:
+        ROS_LOG_DIR: ${GITHUB_WORKSPACE}/.ros
+    steps:
+      - name: Checkout stella_vslam repo
+        uses: actions/checkout@v3
+        with:
+          repository: stella-cv/stella_vslam
+          path: stella_vslam
+          submodules: recursive
+      - name: install stella_vslam
+        run: |
+          cd stella_vslam
+          rosdep update
+          apt update
+          rosdep install -y -i --from-paths .
+          mkdir build
+          cd build
+          source /opt/ros/${ROS_DISTRO}/setup.bash # need to find libg2o
+          cmake -DCMAKE_BUILD_TYPE=Debug ..
+          make -j $(($(nproc) / 2))
+          make install
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: install dependencies for stella_vslam_ros
+        run: |
+          mkdir -p /ros_ws/src
+          cp -r . /ros_ws/src/stella_vslam_ros
+          cd /ros_ws
+          rosdep update
+          apt update
+          rosdep install -y -i --from-paths src --skip-keys=stella_vslam
+      - name: build stella_vslam_ros
+        run: |
+          cd /ros_ws
+          source /opt/ros/${ROS_DISTRO}/setup.bash
+          catkin_make -j$(($(nproc) / 2))
