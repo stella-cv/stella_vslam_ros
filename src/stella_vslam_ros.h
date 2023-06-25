@@ -14,6 +14,7 @@
 #include <message_filters/sync_policies/exact_time.h>
 #include <cv_bridge/cv_bridge.h>
 #include <nav_msgs/msg/odometry.hpp>
+#include <geometry_msgs/msg/pose_array.hpp>
 
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -29,6 +30,7 @@ public:
     system(const std::shared_ptr<stella_vslam::system>& slam,
            const std::string& mask_img_path);
     void publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time& stamp);
+    void publish_keyframes(const rclcpp::Time& stamp);
     void setParams();
     std::shared_ptr<stella_vslam::system> slam_;
     std::shared_ptr<stella_vslam::config> cfg_;
@@ -38,6 +40,8 @@ public:
     cv::Mat mask_;
     std::vector<double> track_times_;
     std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::Odometry>> pose_pub_;
+    std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::PoseArray>> keyframes_pub_;
+    std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::PoseArray>> keyframes_2d_pub_;
     std::shared_ptr<rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>>
         init_pose_sub_;
     std::shared_ptr<tf2_ros::TransformBroadcaster> map_to_odom_broadcaster_;
@@ -46,10 +50,13 @@ public:
     std::unique_ptr<tf2_ros::Buffer> tf_;
     std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
     bool publish_tf_;
+    bool publish_keyframes_;
     double transform_tolerance_;
 
 private:
     void init_pose_callback(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg);
+
+    Eigen::AngleAxisd rot_ros_to_cv_map_frame_;
 };
 
 class mono : public system {
