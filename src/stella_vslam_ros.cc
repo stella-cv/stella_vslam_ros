@@ -1,5 +1,6 @@
 #include <stella_vslam_ros.h>
 #include <stella_vslam/publish/map_publisher.h>
+#include <stella_vslam/data/keyframe.h>
 
 #include <chrono>
 
@@ -16,6 +17,8 @@ system::system(const std::shared_ptr<stella_vslam::system>& slam,
     : slam_(slam), node_(std::make_shared<rclcpp::Node>("run_slam")), custom_qos_(rmw_qos_profile_default),
       mask_(mask_img_path.empty() ? cv::Mat{} : cv::imread(mask_img_path, cv::IMREAD_GRAYSCALE)),
       pose_pub_(node_->create_publisher<nav_msgs::msg::Odometry>("~/camera_pose", 1)),
+      keyframes_pub_(node_->create_publisher<geometry_msgs::msg::PoseArray>("~/keyframes", 1)),
+      keyframes_2d_pub_(node_->create_publisher<geometry_msgs::msg::PoseArray>("~/keyframes_2d", 1)),
       map_to_odom_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>(node_)),
       tf_(std::make_unique<tf2_ros::Buffer>(node_->get_clock())),
       transform_listener_(std::make_shared<tf2_ros::TransformListener>(*tf_)) {
@@ -26,6 +29,10 @@ system::system(const std::shared_ptr<stella_vslam::system>& slam,
         std::bind(&system::init_pose_callback,
                   this, std::placeholders::_1));
     setParams();
+    rot_ros_to_cv_map_frame_ = (Eigen::Matrix3d() << 0, 0, 1,
+                                -1, 0, 0,
+                                0, -1, 0)
+                                   .finished();
 }
 
 void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time& stamp) {
@@ -33,21 +40,16 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time
     Eigen::Matrix3d rot(cam_pose_wc.block<3, 3>(0, 0));
     Eigen::Translation3d trans(cam_pose_wc.block<3, 1>(0, 3));
     Eigen::Affine3d map_to_camera_affine(trans * rot);
-    Eigen::AngleAxisd rot_ros_to_cv_map_frame(
-        (Eigen::Matrix3d() << 0, 0, 1,
-         -1, 0, 0,
-         0, -1, 0)
-            .finished());
 
     // Transform map frame from CV coordinate system to ROS coordinate system
-    map_to_camera_affine.prerotate(rot_ros_to_cv_map_frame);
+    map_to_camera_affine.prerotate(rot_ros_to_cv_map_frame_);
 
     // Create odometry message and update it with current camera pose
     nav_msgs::msg::Odometry pose_msg;
     pose_msg.header.stamp = stamp;
     pose_msg.header.frame_id = map_frame_;
     pose_msg.child_frame_id = camera_frame_;
-    pose_msg.pose.pose = tf2::toMsg(map_to_camera_affine * rot_ros_to_cv_map_frame.inverse());
+    pose_msg.pose.pose = tf2::toMsg(map_to_camera_affine * rot_ros_to_cv_map_frame_.inverse());
     pose_pub_->publish(pose_msg);
 
     // Send map->odom transform. Set publish_tf to false if not using TF
@@ -71,6 +73,33 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time
     }
 }
 
+void system::publish_keyframes(const rclcpp::Time& stamp) {
+    Eigen::Vector3d normal_vector;
+    normal_vector << 0, 0, 1;
+    geometry_msgs::msg::PoseArray keyframes_msg;
+    geometry_msgs::msg::PoseArray keyframes_2d_msg;
+    keyframes_msg.header.stamp = stamp;
+    keyframes_msg.header.frame_id = map_frame_;
+    keyframes_2d_msg.header = keyframes_msg.header;
+    std::vector<std::shared_ptr<stella_vslam::data::keyframe>> all_keyfrms;
+    slam_->get_map_publisher()->get_keyframes(all_keyfrms);
+    for (const auto& keyfrm : all_keyfrms) {
+        if (!keyfrm || keyfrm->will_be_erased()) {
+            continue;
+        }
+        Eigen::Matrix4d cam_pose_wc = keyfrm->get_pose_wc();
+        Eigen::Matrix3d rot(cam_pose_wc.block<3, 3>(0, 0));
+        Eigen::Translation3d trans(cam_pose_wc.block<3, 1>(0, 3));
+        Eigen::Affine3d map_to_camera_affine(trans * rot);
+        Eigen::Affine3d pose_affine = rot_ros_to_cv_map_frame_ * map_to_camera_affine * rot_ros_to_cv_map_frame_.inverse();
+        keyframes_msg.poses.push_back(tf2::toMsg(pose_affine));
+        pose_affine.translation() = pose_affine.translation() - pose_affine.translation().dot(normal_vector) * normal_vector;
+        keyframes_2d_msg.poses.push_back(tf2::toMsg(pose_affine));
+    }
+    keyframes_pub_->publish(keyframes_msg);
+    keyframes_2d_pub_->publish(keyframes_2d_msg);
+}
+
 void system::setParams() {
     odom_frame_ = std::string("odom");
     odom_frame_ = node_->declare_parameter("odom_frame", odom_frame_);
@@ -87,6 +116,9 @@ void system::setParams() {
     // Set publish_tf to false if not using TF
     publish_tf_ = true;
     publish_tf_ = node_->declare_parameter("publish_tf", publish_tf_);
+
+    publish_keyframes_ = true;
+    publish_keyframes_ = node_->declare_parameter("publish_keyframes", publish_keyframes_);
 
     // Publish pose's timestamp in the future
     transform_tolerance_ = 0.5;
@@ -184,6 +216,9 @@ void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
     if (cam_pose_wc) {
         publish_pose(*cam_pose_wc, msg->header.stamp);
     }
+    if (publish_keyframes_) {
+        publish_keyframes(msg->header.stamp);
+    }
 }
 
 stereo::stereo(const std::shared_ptr<stella_vslam::system>& slam,
@@ -234,6 +269,9 @@ void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const
     if (cam_pose_wc) {
         publish_pose(*cam_pose_wc, left->header.stamp);
     }
+    if (publish_keyframes_) {
+        publish_keyframes(left->header.stamp);
+    }
 }
 
 rgbd::rgbd(const std::shared_ptr<stella_vslam::system>& slam, const std::string& mask_img_path)
@@ -279,6 +317,9 @@ void rgbd::callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const 
 
     if (cam_pose_wc) {
         publish_pose(*cam_pose_wc, color->header.stamp);
+    }
+    if (publish_keyframes_) {
+        publish_keyframes(color->header.stamp);
     }
 }
 
