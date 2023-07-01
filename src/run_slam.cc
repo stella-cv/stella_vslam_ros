@@ -34,42 +34,43 @@ namespace fs = ghc::filesystem;
 void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
               const std::shared_ptr<stella_vslam::config>& cfg,
               const bool eval_log,
-              const std::string& map_db_path) {
+              const std::string& map_db_path,
+              const bool disable_gui) {
     auto& SLAM = slam_ros->slam_;
 
     // create a viewer object
     // and pass the frame_publisher and the map_publisher
 #ifdef USE_PANGOLIN_VIEWER
-    pangolin_viewer::viewer viewer(stella_vslam::util::yaml_optional_ref(cfg->yaml_node_, "PangolinViewer"), SLAM, SLAM->get_frame_publisher(), SLAM->get_map_publisher());
+    std::shared_ptr<pangolin_viewer::viewer> viewer;
+    if (!disable_gui) {
+        viewer = std::make_shared<pangolin_viewer::viewer>(stella_vslam::util::yaml_optional_ref(cfg->yaml_node_, "PangolinViewer"), SLAM, SLAM->get_frame_publisher(), SLAM->get_map_publisher());
+    }
 #elif USE_SOCKET_PUBLISHER
-    socket_publisher::publisher publisher(stella_vslam::util::yaml_optional_ref(cfg->yaml_node_, "SocketPublisher"), SLAM, SLAM->get_frame_publisher(), SLAM->get_map_publisher());
+    std::shared_ptr<socket_publisher::publisher> publisher;
+    if (!disable_gui) {
+        publisher = std::make_shared<socket_publisher::publisher>(stella_vslam::util::yaml_optional_ref(cfg->yaml_node_, "SocketPublisher"), SLAM, SLAM->get_frame_publisher(), SLAM->get_map_publisher());
+    }
 #endif
 
-    // TODO: Pangolin needs to run in the main thread on OSX
-    // run the viewer in another thread
+    std::thread thread;
+    if (!disable_gui) {
+        // TODO: Pangolin needs to run in the main thread on OSX
+        // run the viewer in another thread
+        thread = std::thread([&]() {
 #ifdef USE_PANGOLIN_VIEWER
-    std::thread thread([&]() {
-        viewer.run();
-        if (SLAM->terminate_is_requested()) {
-            // wait until the loop BA is finished
-            while (SLAM->loop_BA_is_running()) {
-                std::this_thread::sleep_for(std::chrono::microseconds(5000));
-            }
-            rclcpp::shutdown();
-        }
-    });
+            viewer->run();
 #elif USE_SOCKET_PUBLISHER
-    std::thread thread([&]() {
-        publisher.run();
-        if (SLAM->terminate_is_requested()) {
-            // wait until the loop BA is finished
-            while (SLAM->loop_BA_is_running()) {
-                std::this_thread::sleep_for(std::chrono::microseconds(5000));
-            }
-            rclcpp::shutdown();
-        }
-    });
+            publisher->run();
 #endif
+            if (SLAM->terminate_is_requested()) {
+                // wait until the loop BA is finished
+                while (SLAM->loop_BA_is_running()) {
+                    std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                }
+                rclcpp::shutdown();
+            }
+        });
+    }
 
     rclcpp::Rate rate(50);
     while (rclcpp::ok()) {
@@ -77,14 +78,15 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
         rate.sleep();
     }
 
-    // automatically close the viewer
+    if (!disable_gui) {
+        // automatically close the viewer
 #ifdef USE_PANGOLIN_VIEWER
-    viewer.request_terminate();
-    thread.join();
+        viewer->request_terminate();
 #elif USE_SOCKET_PUBLISHER
-    publisher.request_terminate();
-    thread.join();
+        publisher->request_terminate();
 #endif
+        thread.join();
+    }
 
     // shutdown the SLAM process
     SLAM->shutdown();
@@ -137,6 +139,7 @@ int main(int argc, char* argv[]) {
     auto disable_mapping = op.add<popl::Switch>("", "disable-mapping", "disable mapping");
     auto temporal_mapping = op.add<popl::Switch>("", "temporal-mapping", "enable temporal mapping");
     auto rectify = op.add<popl::Switch>("r", "rectify", "rectify stereo image");
+    auto disable_gui = op.add<popl::Switch>("", "disable-gui", "run without GUI");
     try {
         op.parse(argc, argv);
     }
@@ -218,7 +221,7 @@ int main(int argc, char* argv[]) {
     }
 
     // run tracking
-    tracking(slam_ros, cfg, eval_log->is_set(), map_db_path_out->value());
+    tracking(slam_ros, cfg, eval_log->is_set(), map_db_path_out->value(), disable_gui->is_set());
 
 #ifdef USE_GOOGLE_PERFTOOLS
     ProfilerStop();
