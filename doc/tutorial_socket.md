@@ -35,9 +35,9 @@ You can accelerate the build of the docker image with `--build-arg NUM_THREADS=<
 Execute the following commands:
 
 ```shell
-~$ git clone --recursive https://github.com/stella-cv/stella_vslam.git
-~$ cd stella_vslam/viewer
-~/stella_vslam/viewer$ docker build -t stella_vslam-ros-server .
+~$ git clone --recursive https://github.com/stella-cv/socket_viewer.git
+~$ cd socket_viewer
+~/socket_viewer$ docker build -t stella_vslam-ros-server .
 ```
 
 ### Step 4: Start Docker Containers for "stella_vslam-ros-server"
