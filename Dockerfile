@@ -104,16 +104,29 @@ RUN set -x && \
   git submodule update -i --recursive && \
   mkdir -p build && \
   cd build && \
-  CMAKE_PREFIX_PATH=/opt/ros/${ROS_DISTRO}/lib/cmake cmake \
-    -DUSE_PANGOLIN_VIEWER=ON \
-    -DUSE_SOCKET_PUBLISHER=OFF \
-    -DINSTALL_PANGOLIN_VIEWER=ON \
-    -DUSE_STACK_TRACE_LOGGER=ON \
-    .. && \
+  CMAKE_PREFIX_PATH=/opt/ros/${ROS_DISTRO}/lib/cmake cmake .. && \
   make -j${NUM_THREADS} && \
   make install && \
   rm -rf CMakeCache.txt CMakeFiles Makefile cmake_install.cmake example src && \
   chmod -R 777 ./*
+
+ARG PANGOLIN_VIEWER_COMMIT=f3564675d420bcdbe6380b29b5e2f2b623987dd0
+WORKDIR /tmp
+RUN set -x && \
+  git clone https://github.com/stella-cv/pangolin_viewer.git && \
+  cd pangolin_viewer && \
+  git checkout -q ${PANGOLIN_VIEWER_COMMIT} && \
+  git submodule update --init --recursive && \
+  mkdir -p build && \
+  cd build && \
+  CMAKE_PREFIX_PATH=/opt/ros/${ROS_DISTRO}/lib/cmake cmake \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} \
+    .. && \
+  make -j${NUM_THREADS} && \
+  make install && \
+  cd /tmp && \
+  rm -rf *
 
 # ROS2
 RUN set -x && \
@@ -138,8 +151,6 @@ RUN set -x && \
   : "build ROS2 packages" && \
   bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash; \
   colcon build --parallel-workers ${NUM_THREADS} --cmake-args \
-    -DUSE_PANGOLIN_VIEWER=ON \
-    -DUSE_SOCKET_PUBLISHER=OFF \
     -DUSE_STACK_TRACE_LOGGER=ON"
 
 RUN set -x && \

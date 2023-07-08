@@ -171,24 +171,13 @@ include_directories(${popl_INCLUDE_DIR})
 set(json_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/3rd/json/include)
 include_directories(${json_INCLUDE_DIR})
 
-# pangolin viewer
-set(USE_PANGOLIN_VIEWER OFF CACHE BOOL "Enable Pangolin Viewer")
-if(USE_PANGOLIN_VIEWER)
-    find_library(Pangolin_Viewer_LIB pangolin_viewer)
-    find_package(Pangolin REQUIRED)
+find_package(pangolin_viewer QUIET)
+if(pangolin_viewer_FOUND)
+    message(STATUS "Viewer for examples: PangolinViewer")
 endif()
-
-# socket publisher
-set(USE_SOCKET_PUBLISHER OFF CACHE BOOL "Enable Socket Publisher")
-if(USE_SOCKET_PUBLISHER)
-    find_package(sioclient REQUIRED)
-    find_package(Protobuf REQUIRED)
-    find_library(Socket_Publisher_LIB socket_publisher)
-    if(NOT PROTOBUF_PROTOC_EXECUTABLE)
-        message(FATAL_ERROR "Could not find protoc executable (PROTOBUF_PROTOC_EXECUTABLE)")
-    endif()
-    message(STATUS "Found protoc executable: ${PROTOBUF_PROTOC_EXECUTABLE}")
-    include_directories(${SIOCLIENT_INCLUDE_DIR} ${PROTOBUF_INCLUDE_DIRS})
+find_package(socket_publisher QUIET)
+if(socket_publisher_FOUND)
+    message(STATUS "Viewer for examples: SocketPublisher")
 endif()
 
 #########
