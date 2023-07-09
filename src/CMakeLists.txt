@@ -1,9 +1,8 @@
-if(USE_PANGOLIN_VIEWER)
+if(pangolin_viewer_FOUND)
     message(STATUS "Viewer for examples: pangolin viewer")
-elseif(USE_SOCKET_PUBLISHER)
+endif()
+if(socket_publisher_FOUND)
     message(STATUS "Viewer for examples: socket publisher")
-else()
-    message(STATUS "Viewer for examples: none")
 endif()
 
 set(EXECUTABLE_TARGETS "")
@@ -15,20 +14,21 @@ foreach(EXECUTABLE_TARGET IN LISTS EXECUTABLE_TARGETS)
     add_dependencies(${EXECUTABLE_TARGET} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
     # pangolin_viewer is used on a priority basis
-    if(USE_PANGOLIN_VIEWER)
+    if(pangolin_viewer_FOUND)
         # set macro flag
         target_compile_definitions(${EXECUTABLE_TARGET}
-                PRIVATE -DUSE_PANGOLIN_VIEWER)
+                PRIVATE HAVE_PANGOLIN_VIEWER)
         # link viewer
         target_link_libraries(${EXECUTABLE_TARGET} PRIVATE
-                ${Pangolin_Viewer_LIB} ${Pangolin_LIBRARIES})
-    elseif(USE_SOCKET_PUBLISHER)
+                pangolin_viewer::pangolin_viewer)
+    endif()
+    if(socket_publisher_FOUND)
         # set macro flag
         target_compile_definitions(${EXECUTABLE_TARGET}
-                PRIVATE -DUSE_SOCKET_PUBLISHER)
+                PRIVATE HAVE_SOCKET_PUBLISHER)
         # link viewer
         target_link_libraries(${EXECUTABLE_TARGET} PRIVATE
-                ${Socket_Publisher_LIB} ${SIOCLIENT_LIBRARY} ${PROTOBUF_LIBRARIES})
+                socket_publisher::socket_publisher ${SIOCLIENT_LIBRARY} ${PROTOBUF_LIBRARIES})
     endif()
 
     # setup stack trace logger
