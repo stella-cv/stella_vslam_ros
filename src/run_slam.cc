@@ -87,11 +87,7 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
         });
     }
 
-    rclcpp::Rate rate(50);
-    while (rclcpp::ok()) {
-        slam_ros->exec_.spin_some();
-        rate.sleep();
-    }
+    slam_ros->exec_.spin();
 
     // automatically close the viewer
     if (viewer_string == "pangolin_viewer") {
