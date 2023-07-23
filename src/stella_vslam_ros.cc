@@ -142,8 +142,8 @@ void system::setParams() {
     map_frame_ = std::string("map");
     private_nh_.param("map_frame", map_frame_, map_frame_);
 
-    base_link_ = std::string("base_footprint");
-    private_nh_.param("base_link", base_link_, base_link_);
+    robot_base_frame_ = std::string("base_link");
+    private_nh_.param("robot_base_frame", robot_base_frame_, robot_base_frame_);
 
     camera_frame_ = std::string("camera_frame");
     private_nh_.param("camera_frame", camera_frame_, camera_frame_);
@@ -196,12 +196,12 @@ void system::init_pose_callback(
         return;
     }
 
-    Eigen::Affine3d base_link_to_camera_affine;
+    Eigen::Affine3d robot_base_frame_to_camera_affine;
     try {
-        auto base_link_to_camera = tf_->lookupTransform(
-            base_link_, camera_optical_frame_, msg->header.stamp,
+        auto robot_base_frame_to_camera = tf_->lookupTransform(
+            robot_base_frame_, camera_optical_frame_, msg->header.stamp,
             ros::Duration(0.0));
-        base_link_to_camera_affine = tf2::transformToEigen(base_link_to_camera.transform);
+        robot_base_frame_to_camera_affine = tf2::transformToEigen(robot_base_frame_to_camera.transform);
     }
     catch (tf2::TransformException& ex) {
         ROS_ERROR("Transform failed: %s", ex.what());
@@ -212,11 +212,11 @@ void system::init_pose_callback(
     //   rot_cv_to_ros_map_frame: T(map_cv -> map)
     //   map_to_initialpose_frame_affine: T(map -> `msg->header.frame_id`)
     //   initialpose_affine: T(`msg->header.frame_id` -> base_link)
-    //   base_link_to_camera_affine: T(base_link -> camera_link)
+    //   robot_base_frame_to_camera_affine: T(base_link -> camera_link)
     // The flow of the transformation is as follows:
     //   map_cv -> map -> `msg->header.frame_id` -> base_link -> camera_link
     Eigen::Matrix4d cam_pose_cv = (rot_ros_to_cv_map_frame_.inverse() * map_to_initialpose_frame_affine
-                                   * initialpose_affine * base_link_to_camera_affine)
+                                   * initialpose_affine * robot_base_frame_to_camera_affine)
                                       .matrix();
 
     const Eigen::Vector3d normal_vector = (Eigen::Vector3d() << 0., 1., 0.).finished();
