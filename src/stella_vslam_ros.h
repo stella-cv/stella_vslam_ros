@@ -49,9 +49,18 @@ public:
     std::string camera_frame_, camera_optical_frame_;
     std::unique_ptr<tf2_ros::Buffer> tf_;
     std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
+
+    // If true, publish tf from map_frame to odom_frame
     bool publish_tf_;
+
+    // If true, publish keyframes
     bool publish_keyframes_;
+
+    // Publish pose's timestamp in the future
     double transform_tolerance_;
+
+    // If true, odom_frame is fixed on the xy-plane of map_frame. This is useful when working with 2D navigation modules.
+    bool odom2d_;
 
 private:
     void init_pose_callback(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg);
