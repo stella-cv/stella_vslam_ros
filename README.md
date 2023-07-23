@@ -32,7 +32,7 @@ stella_vslam_ros uses submodules. Clone it with `git clone --recursive` or downl
 
 - `odom_frame`
 - `map_frame`
-- `base_link`
+- `robot_base_frame`
 - `camera_frame`
 - `publish_tf`
 - `publish_pointcloud`
