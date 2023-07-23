@@ -15,6 +15,19 @@
 #include <opencv2/imgcodecs.hpp>
 #include <Eigen/Geometry>
 
+namespace {
+Eigen::Affine3d project_to_xy_plane(const Eigen::Affine3d& affine) {
+    Eigen::Matrix4d mat = affine.matrix();
+    mat(2, 0) = mat(2, 1) = 0.0;
+    mat(0, 2) = mat(1, 2) = 0.0;
+    mat(2, 2) = 1.0;
+    mat(2, 3) = 0.0;
+    Eigen::Translation<double, 3> trans(mat.col(3).head<3>());
+    Eigen::Matrix3d rot(mat.block<3, 3>(0, 0));
+    return trans * rot;
+}
+} // namespace
+
 namespace stella_vslam_ros {
 system::system(const std::shared_ptr<stella_vslam::system>& slam,
                const std::string& mask_img_path)
@@ -59,7 +72,14 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& s
             auto camera_to_odom = tf_->lookupTransform(camera_optical_frame_, odom_frame_, stamp, ros::Duration(0.0));
             Eigen::Affine3d camera_to_odom_affine = tf2::transformToEigen(camera_to_odom.transform);
 
-            auto map_to_odom_msg = tf2::eigenToTransform(map_to_camera_affine * camera_to_odom_affine);
+            Eigen::Affine3d map_to_odom3d_affine = map_to_camera_affine * camera_to_odom_affine;
+            geometry_msgs::TransformStamped map_to_odom_msg;
+            if (odom2d_) {
+                map_to_odom_msg = tf2::eigenToTransform(project_to_xy_plane(map_to_odom3d_affine));
+            }
+            else {
+                map_to_odom_msg = tf2::eigenToTransform(map_to_odom3d_affine);
+            }
             auto transform_timestamp = stamp + ros::Duration(transform_tolerance_);
             map_to_odom_msg.header.stamp = transform_timestamp;
             map_to_odom_msg.header.frame_id = map_frame_;
@@ -92,8 +112,6 @@ void system::publish_pointcloud(const ros::Time& stamp) {
 }
 
 void system::publish_keyframes(const ros::Time& stamp) {
-    Eigen::Vector3d normal_vector;
-    normal_vector << 0, 0, 1;
     geometry_msgs::PoseArray keyframes_msg;
     geometry_msgs::PoseArray keyframes_2d_msg;
     keyframes_msg.header.stamp = stamp;
@@ -111,8 +129,7 @@ void system::publish_keyframes(const ros::Time& stamp) {
         Eigen::Affine3d map_to_camera_affine(trans * rot);
         Eigen::Affine3d pose_affine = rot_ros_to_cv_map_frame_ * map_to_camera_affine * rot_ros_to_cv_map_frame_.inverse();
         keyframes_msg.poses.push_back(tf2::toMsg(pose_affine));
-        pose_affine.translation() = pose_affine.translation() - pose_affine.translation().dot(normal_vector) * normal_vector;
-        keyframes_2d_msg.poses.push_back(tf2::toMsg(pose_affine));
+        keyframes_2d_msg.poses.push_back(tf2::toMsg(project_to_xy_plane(pose_affine)));
     }
     keyframes_pub_.publish(keyframes_msg);
     keyframes_2d_pub_.publish(keyframes_2d_msg);
@@ -131,7 +148,6 @@ void system::setParams() {
     camera_frame_ = std::string("camera_frame");
     private_nh_.param("camera_frame", camera_frame_, camera_frame_);
 
-    // Set publish_tf to false if not using TF
     publish_tf_ = true;
     private_nh_.param("publish_tf", publish_tf_, publish_tf_);
 
@@ -139,10 +155,12 @@ void system::setParams() {
     publish_pointcloud_ = false;
     private_nh_.param("publish_pointcloud", publish_pointcloud_, publish_pointcloud_);
 
+    odom2d_ = false;
+    private_nh_.param("odom2d", odom2d_, odom2d_);
+
     publish_keyframes_ = true;
     private_nh_.param("publish_keyframes", publish_keyframes_, publish_keyframes_);
 
-    // Publish pose's timestamp in the future
     transform_tolerance_ = 0.5;
     private_nh_.param("transform_tolerance", transform_tolerance_, transform_tolerance_);
 }
