@@ -31,7 +31,7 @@ namespace fs = ghc::filesystem;
 
 void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
               const std::shared_ptr<stella_vslam::config>& cfg,
-              const bool eval_log,
+              const std::string& eval_log_dir,
               const std::string& map_db_path,
               const std::string& viewer_string) {
     auto& SLAM = slam_ros->slam_;
@@ -108,12 +108,12 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
     SLAM->shutdown();
 
     auto& track_times = slam_ros->track_times_;
-    if (eval_log) {
+    if (!eval_log_dir.empty()) {
         // output the trajectories for evaluation
-        SLAM->save_frame_trajectory("frame_trajectory.txt", "TUM");
-        SLAM->save_keyframe_trajectory("keyframe_trajectory.txt", "TUM");
+        SLAM->save_frame_trajectory(eval_log_dir + "/frame_trajectory.txt", "TUM");
+        SLAM->save_keyframe_trajectory(eval_log_dir + "/keyframe_trajectory.txt", "TUM");
         // output the tracking times for evaluation
-        std::ofstream ofs("track_times.txt", std::ios::out);
+        std::ofstream ofs(eval_log_dir + "/track_times.txt", std::ios::out);
         if (ofs.is_open()) {
             for (const auto track_time : track_times) {
                 ofs << track_time << std::endl;
@@ -149,7 +149,7 @@ int main(int argc, char* argv[]) {
     auto setting_file_path = op.add<popl::Value<std::string>>("c", "config", "setting file path");
     auto mask_img_path = op.add<popl::Value<std::string>>("", "mask", "mask image path", "");
     auto log_level = op.add<popl::Value<std::string>>("", "log-level", "log level", "info");
-    auto eval_log = op.add<popl::Switch>("", "eval-log", "store trajectory and tracking times for evaluation");
+    auto eval_log_dir = op.add<popl::Value<std::string>>("", "eval-log-dir", "store trajectory and tracking times at this path (Specify the directory where it exists.)", "");
     auto map_db_path_in = op.add<popl::Value<std::string>>("i", "map-db-in", "load a map from this path", "");
     auto map_db_path_out = op.add<popl::Value<std::string>>("o", "map-db-out", "store a map database at this path after slam", "");
     auto disable_mapping = op.add<popl::Switch>("", "disable-mapping", "disable mapping");
@@ -272,7 +272,7 @@ int main(int argc, char* argv[]) {
     }
 
     // run tracking
-    tracking(slam_ros, cfg, eval_log->is_set(), map_db_path_out->value(), viewer_string);
+    tracking(slam_ros, cfg, eval_log_dir->value(), map_db_path_out->value(), viewer_string);
 
 #ifdef USE_GOOGLE_PERFTOOLS
     ProfilerStop();
