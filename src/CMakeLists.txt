@@ -51,6 +51,11 @@ foreach(EXECUTABLE_TARGET IN LISTS EXECUTABLE_TARGETS)
     target_link_libraries(${EXECUTABLE_TARGET} PRIVATE
         yaml-cpp)
 
+    if(spdlog_FOUND)
+      target_link_libraries(${EXECUTABLE_TARGET} PRIVATE
+        spdlog::spdlog)
+    endif()
+
     # build
     target_include_directories(${EXECUTABLE_TARGET}
                                PRIVATE ${rclcpp_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
