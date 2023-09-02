@@ -18,6 +18,8 @@
     <buildtool_depend>ament_cmake</buildtool_depend>
 
     <depend>stella_vslam</depend>
+    <depend>rclcpp</depend>
+    <depend>rclcpp_components</depend>
     <depend>eigen</depend>
     <depend>libgoogle-glog-dev</depend>
     <depend>image_transport</depend>
