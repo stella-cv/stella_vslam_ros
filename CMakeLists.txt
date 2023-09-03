@@ -118,6 +118,7 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_components REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(message_filters REQUIRED)
@@ -190,5 +191,49 @@ endif()
 #########
 
 add_subdirectory(src)
+
+add_library(stella_vslam_ros_system SHARED
+  src/system.cc src/stella_vslam_ros.cc
+)
+# TODO: Move heder files to include directory
+target_include_directories(stella_vslam_ros_system PRIVATE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+  $<INSTALL_INTERFACE:src>)
+rclcpp_components_register_node(stella_vslam_ros_system PLUGIN "stella_vslam_ros::System" EXECUTABLE system)
+ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+ament_target_dependencies(stella_vslam_ros_system
+  PUBLIC
+  rclcpp
+  rclcpp_components
+  cv_bridge
+  image_transport
+  message_filters
+  rcutils
+  geometry_msgs
+  nav_msgs
+  sensor_msgs
+  tf2
+  tf2_eigen
+  tf2_geometry_msgs
+  tf2_msgs
+  tf2_ros)
+target_link_libraries(stella_vslam_ros_system PRIVATE
+  yaml-cpp
+  stella_vslam::stella_vslam)
+if(spdlog_FOUND)
+  target_link_libraries(stella_vslam_ros_system PRIVATE
+    spdlog::spdlog)
+endif()
+if(NOT WIN32)
+  ament_environment_hooks(
+    "${ament_cmake_package_templates_ENVIRONMENT_HOOK_LIBRARY_PATH}")
+endif()
+install(TARGETS
+  stella_vslam_ros_system
+  EXPORT export_${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
 
 ament_package()
