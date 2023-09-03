@@ -91,7 +91,7 @@ System::System(
     }
 
     if (slam_->get_camera()->setup_type_ == stella_vslam::camera::setup_type_t::Monocular) {
-        slam_ros_ = std::make_shared<stella_vslam_ros::mono>(slam_, "");
+        slam_ros_ = std::make_shared<stella_vslam_ros::mono>(slam_, this, "");
     }
     else {
         RCLCPP_FATAL_STREAM(get_logger(), "Invalid setup type: " << slam_->get_camera()->get_setup_type_string());

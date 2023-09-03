@@ -87,7 +87,7 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
         });
     }
 
-    slam_ros->exec_.spin();
+    rclcpp::spin(slam_ros->node_->get_node_base_interface());
 
     // automatically close the viewer
     if (viewer_string == "pangolin_viewer") {
@@ -256,16 +256,17 @@ int main(int argc, char* argv[]) {
         slam->disable_loop_detector();
     }
 
+    auto node = std::make_shared<rclcpp::Node>("run_slam");
     std::shared_ptr<stella_vslam_ros::system> slam_ros;
     if (slam->get_camera()->setup_type_ == stella_vslam::camera::setup_type_t::Monocular) {
-        slam_ros = std::make_shared<stella_vslam_ros::mono>(slam, mask_img_path->value());
+        slam_ros = std::make_shared<stella_vslam_ros::mono>(slam, node.get(), mask_img_path->value());
     }
     else if (slam->get_camera()->setup_type_ == stella_vslam::camera::setup_type_t::Stereo) {
         auto rectifier = rectify->value() ? std::make_shared<stella_vslam::util::stereo_rectifier>(cfg, slam->get_camera()) : nullptr;
-        slam_ros = std::make_shared<stella_vslam_ros::stereo>(slam, mask_img_path->value(), rectifier);
+        slam_ros = std::make_shared<stella_vslam_ros::stereo>(slam, node.get(), mask_img_path->value(), rectifier);
     }
     else if (slam->get_camera()->setup_type_ == stella_vslam::camera::setup_type_t::RGBD) {
-        slam_ros = std::make_shared<stella_vslam_ros::rgbd>(slam, mask_img_path->value());
+        slam_ros = std::make_shared<stella_vslam_ros::rgbd>(slam, node.get(), mask_img_path->value());
     }
     else {
         throw std::runtime_error("Invalid setup type: " + slam->get_camera()->get_setup_type_string());
