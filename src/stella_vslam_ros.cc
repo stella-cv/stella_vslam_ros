@@ -212,9 +212,35 @@ void system::init_pose_callback(
 mono::mono(const std::shared_ptr<stella_vslam::system>& slam,
            const std::string& mask_img_path)
     : system(slam, mask_img_path) {
-    sub_ = image_transport::create_subscription(
-        node_.get(), "camera/image_raw", [this](const sensor_msgs::msg::Image::ConstSharedPtr& msg) { callback(msg); }, "raw", custom_qos_);
+    auto qos = rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(custom_qos_), custom_qos_);
+    raw_image_sub_ = node_->create_subscription<sensor_msgs::msg::Image>(
+        "camera/image_raw", qos, [this](sensor_msgs::msg::Image::UniquePtr msg_unique_ptr) { callback(std::move(msg_unique_ptr)); });
 }
+void mono::callback(sensor_msgs::msg::Image::UniquePtr msg_unique_ptr) {
+    sensor_msgs::msg::Image::ConstSharedPtr msg = std::move(msg_unique_ptr);
+    if (camera_optical_frame_.empty()) {
+        camera_optical_frame_ = msg->header.frame_id;
+    }
+    const rclcpp::Time tp_1 = node_->now();
+    const double timestamp = rclcpp::Time(msg->header.stamp).seconds();
+
+    // input the current frame and estimate the camera pose
+    auto cam_pose_wc = slam_->feed_monocular_frame(cv_bridge::toCvShare(msg)->image, timestamp, mask_);
+
+    const rclcpp::Time tp_2 = node_->now();
+    const double track_time = (tp_2 - tp_1).seconds();
+
+    // track times in seconds
+    track_times_.push_back(track_time);
+
+    if (cam_pose_wc) {
+        publish_pose(*cam_pose_wc, msg->header.stamp);
+    }
+    if (publish_keyframes_) {
+        publish_keyframes(msg->header.stamp);
+    }
+}
+
 void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
     if (camera_optical_frame_.empty()) {
         camera_optical_frame_ = msg->header.frame_id;

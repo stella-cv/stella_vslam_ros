@@ -75,9 +75,10 @@ class mono : public system {
 public:
     mono(const std::shared_ptr<stella_vslam::system>& slam,
          const std::string& mask_img_path);
+    void callback(sensor_msgs::msg::Image::UniquePtr msg);
     void callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg);
 
-    image_transport::Subscriber sub_;
+    std::shared_ptr<rclcpp::Subscription<sensor_msgs::msg::Image>> raw_image_sub_;
 };
 
 template<class M, class NodeType = rclcpp::Node>
