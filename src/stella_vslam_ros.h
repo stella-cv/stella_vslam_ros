@@ -28,14 +28,14 @@ namespace stella_vslam_ros {
 class system {
 public:
     system(const std::shared_ptr<stella_vslam::system>& slam,
+           rclcpp::Node* node,
            const std::string& mask_img_path);
     void publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time& stamp);
     void publish_keyframes(const rclcpp::Time& stamp);
     void setParams();
     std::shared_ptr<stella_vslam::system> slam_;
     std::shared_ptr<stella_vslam::config> cfg_;
-    std::shared_ptr<rclcpp::Node> node_;
-    rclcpp::executors::SingleThreadedExecutor exec_;
+    rclcpp::Node* node_;
     rmw_qos_profile_t custom_qos_;
     cv::Mat mask_;
     std::vector<double> track_times_;
@@ -74,6 +74,7 @@ private:
 class mono : public system {
 public:
     mono(const std::shared_ptr<stella_vslam::system>& slam,
+         rclcpp::Node* node,
          const std::string& mask_img_path);
     void callback(sensor_msgs::msg::Image::UniquePtr msg);
     void callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg);
@@ -112,6 +113,7 @@ public:
 class stereo : public system {
 public:
     stereo(const std::shared_ptr<stella_vslam::system>& slam,
+           rclcpp::Node* node,
            const std::string& mask_img_path,
            const std::shared_ptr<stella_vslam::util::stereo_rectifier>& rectifier);
     void callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const sensor_msgs::msg::Image::ConstSharedPtr& right);
@@ -128,6 +130,7 @@ public:
 class rgbd : public system {
 public:
     rgbd(const std::shared_ptr<stella_vslam::system>& slam,
+         rclcpp::Node* node,
          const std::string& mask_img_path);
     void callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const sensor_msgs::msg::Image::ConstSharedPtr& depth);
 

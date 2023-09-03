@@ -26,8 +26,9 @@ Eigen::Affine3d project_to_xy_plane(const Eigen::Affine3d& affine) {
 
 namespace stella_vslam_ros {
 system::system(const std::shared_ptr<stella_vslam::system>& slam,
+               rclcpp::Node* node,
                const std::string& mask_img_path)
-    : slam_(slam), node_(std::make_shared<rclcpp::Node>("run_slam")), custom_qos_(rmw_qos_profile_sensor_data),
+    : slam_(slam), node_(node), custom_qos_(rmw_qos_profile_sensor_data),
       mask_(mask_img_path.empty() ? cv::Mat{} : cv::imread(mask_img_path, cv::IMREAD_GRAYSCALE)),
       pose_pub_(node_->create_publisher<nav_msgs::msg::Odometry>("~/camera_pose", 1)),
       keyframes_pub_(node_->create_publisher<geometry_msgs::msg::PoseArray>("~/keyframes", 1)),
@@ -36,7 +37,6 @@ system::system(const std::shared_ptr<stella_vslam::system>& slam,
       tf_(std::make_unique<tf2_ros::Buffer>(node_->get_clock())),
       transform_listener_(std::make_shared<tf2_ros::TransformListener>(*tf_)) {
     custom_qos_.depth = 1;
-    exec_.add_node(node_);
     init_pose_sub_ = node_->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
         "/initialpose", 1,
         std::bind(&system::init_pose_callback,
@@ -210,8 +210,9 @@ void system::init_pose_callback(
 }
 
 mono::mono(const std::shared_ptr<stella_vslam::system>& slam,
+           rclcpp::Node* node,
            const std::string& mask_img_path)
-    : system(slam, mask_img_path) {
+    : system(slam, node, mask_img_path) {
     auto qos = rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(custom_qos_), custom_qos_);
     raw_image_sub_ = node_->create_subscription<sensor_msgs::msg::Image>(
         "camera/image_raw", qos, [this](sensor_msgs::msg::Image::UniquePtr msg_unique_ptr) { callback(std::move(msg_unique_ptr)); });
@@ -266,9 +267,10 @@ void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
 }
 
 stereo::stereo(const std::shared_ptr<stella_vslam::system>& slam,
+               rclcpp::Node* node,
                const std::string& mask_img_path,
                const std::shared_ptr<stella_vslam::util::stereo_rectifier>& rectifier)
-    : system(slam, mask_img_path),
+    : system(slam, node, mask_img_path),
       rectifier_(rectifier),
       left_sf_(node_, "camera/left/image_raw"),
       right_sf_(node_, "camera/right/image_raw") {
@@ -318,8 +320,10 @@ void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const
     }
 }
 
-rgbd::rgbd(const std::shared_ptr<stella_vslam::system>& slam, const std::string& mask_img_path)
-    : system(slam, mask_img_path),
+rgbd::rgbd(const std::shared_ptr<stella_vslam::system>& slam,
+           rclcpp::Node* node,
+           const std::string& mask_img_path)
+    : system(slam, node, mask_img_path),
       color_sf_(node_, "camera/color/image_raw"),
       depth_sf_(node_, "camera/depth/image_raw") {
     use_exact_time_ = false;
