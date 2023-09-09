@@ -1,3 +1,10 @@
+#ifdef HAVE_PANGOLIN_VIEWER
+#include "pangolin_viewer/viewer.h"
+#endif
+#ifdef HAVE_SOCKET_PUBLISHER
+#include "socket_publisher/publisher.h"
+#endif
+
 #include <stella_vslam/system.h>
 #include <stella_vslam/config.h>
 #include <stella_vslam/util/yaml.h>
@@ -142,7 +149,7 @@ System::System(
 #ifdef HAVE_PANGOLIN_VIEWER
     if (viewer_string_ == "pangolin_viewer") {
         viewer_ = std::make_shared<pangolin_viewer::viewer>(
-            stella_vslam::util::yaml_optional_ref(cfg->yaml_node_, "PangolinViewer"),
+            stella_vslam::util::yaml_optional_ref(cfg_->yaml_node_, "PangolinViewer"),
             slam_,
             slam_->get_frame_publisher(),
             slam_->get_map_publisher());
@@ -151,7 +158,7 @@ System::System(
 #ifdef HAVE_SOCKET_PUBLISHER
     if (viewer_string_ == "socket_publisher") {
         publisher_ = std::make_shared<socket_publisher::publisher>(
-            stella_vslam::util::yaml_optional_ref(cfg->yaml_node_, "SocketPublisher"),
+            stella_vslam::util::yaml_optional_ref(cfg_->yaml_node_, "SocketPublisher"),
             slam_,
             slam_->get_frame_publisher(),
             slam_->get_map_publisher());
@@ -161,15 +168,15 @@ System::System(
     if (viewer_string_ != "none") {
         // TODO: Pangolin needs to run in the main thread on OSX
         // run the viewer in another thread
-        viewer_thread_ = std::make_shared<std::thread>([&]() {
+        viewer_thread_ = std::make_shared<std::thread>([&, this]() {
             if (viewer_string_ == "pangolin_viewer") {
 #ifdef HAVE_PANGOLIN_VIEWER
-                viewer->run();
+                viewer_->run();
 #endif
             }
             if (viewer_string_ == "socket_publisher") {
 #ifdef HAVE_SOCKET_PUBLISHER
-                publisher->run();
+                publisher_->run();
 #endif
             }
             if (slam_->terminate_is_requested()) {

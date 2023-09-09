@@ -195,6 +195,22 @@ add_subdirectory(src)
 add_library(stella_vslam_ros_system SHARED
   src/system.cc src/stella_vslam_ros.cc
 )
+if(pangolin_viewer_FOUND)
+    # set macro flag
+    target_compile_definitions(stella_vslam_ros_system
+        PRIVATE HAVE_PANGOLIN_VIEWER)
+    # link viewer
+    target_link_libraries(stella_vslam_ros_system PRIVATE
+        pangolin_viewer::pangolin_viewer)
+endif()
+if(socket_publisher_FOUND)
+    # set macro flag
+    target_compile_definitions(stella_vslam_ros_system
+        PRIVATE HAVE_SOCKET_PUBLISHER)
+    # link viewer
+    target_link_libraries(stella_vslam_ros_system PRIVATE
+        socket_publisher::socket_publisher ${SIOCLIENT_LIBRARY} ${PROTOBUF_LIBRARIES})
+endif()
 # TODO: Move heder files to include directory
 target_include_directories(stella_vslam_ros_system PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
