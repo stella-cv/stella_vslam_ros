@@ -14,13 +14,12 @@
 namespace {
 Eigen::Affine3d project_to_xy_plane(const Eigen::Affine3d& affine) {
     Eigen::Matrix4d mat = affine.matrix();
-    mat(2, 0) = mat(2, 1) = 0.0;
-    mat(0, 2) = mat(1, 2) = 0.0;
-    mat(2, 2) = 1.0;
     mat(2, 3) = 0.0;
     Eigen::Translation<double, 3> trans(mat.col(3).head<3>());
-    Eigen::Matrix3d rot(mat.block<3, 3>(0, 0));
-    return trans * rot;
+    double rx = mat(0, 0);
+    double ry = mat(1, 0);
+    double yaw = std::atan2(ry, rx);
+    return trans * Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
 }
 } // namespace
 
@@ -73,13 +72,15 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time
                 tf2::durationFromSec(0.0));
             Eigen::Affine3d camera_to_odom_affine = tf2::transformToEigen(camera_to_odom.transform);
 
-            Eigen::Affine3d map_to_odom3d_affine = map_to_camera_affine * camera_to_odom_affine;
             geometry_msgs::msg::TransformStamped map_to_odom_msg;
             if (odom2d_) {
-                map_to_odom_msg = tf2::eigenToTransform(project_to_xy_plane(map_to_odom3d_affine));
+                Eigen::Affine3d map_to_camera_affine_2d = project_to_xy_plane(map_to_camera_affine * rot_ros_to_cv_map_frame_.inverse()) * rot_ros_to_cv_map_frame_;
+                Eigen::Affine3d camera_to_odom_affine_2d = (project_to_xy_plane(camera_to_odom_affine.inverse() * rot_ros_to_cv_map_frame_.inverse()) * rot_ros_to_cv_map_frame_).inverse();
+                Eigen::Affine3d map_to_odom_affine_2d = map_to_camera_affine_2d * camera_to_odom_affine_2d;
+                map_to_odom_msg = tf2::eigenToTransform(map_to_odom_affine_2d);
             }
             else {
-                map_to_odom_msg = tf2::eigenToTransform(map_to_odom3d_affine);
+                map_to_odom_msg = tf2::eigenToTransform(map_to_camera_affine * camera_to_odom_affine);
             }
             tf2::TimePoint transform_timestamp = tf2_ros::fromMsg(stamp) + tf2::durationFromSec(transform_tolerance_);
             map_to_odom_msg.header.stamp = tf2_ros::toMsg(transform_timestamp);
