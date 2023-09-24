@@ -41,10 +41,10 @@ system::system(const std::shared_ptr<stella_vslam::system>& slam,
         std::bind(&system::init_pose_callback,
                   this, std::placeholders::_1));
     setParams();
-    rot_ros_to_cv_map_frame_ = (Eigen::Matrix3d() << 0, 0, 1,
-                                -1, 0, 0,
-                                0, -1, 0)
-                                   .finished();
+    rot_ros_to_cv_coordinate_ = (Eigen::Matrix3d() << 0, 0, 1,
+                                 -1, 0, 0,
+                                 0, -1, 0)
+                                    .finished();
 }
 
 void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time& stamp) {
@@ -54,14 +54,14 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time
     Eigen::Affine3d map_to_camera_affine(trans * rot);
 
     // Transform map frame from CV coordinate system to ROS coordinate system
-    map_to_camera_affine.prerotate(rot_ros_to_cv_map_frame_);
+    map_to_camera_affine = ros_map_to_cv_map_affine_ * map_to_camera_affine;
 
     // Create odometry message and update it with current camera pose
     nav_msgs::msg::Odometry pose_msg;
     pose_msg.header.stamp = stamp;
     pose_msg.header.frame_id = map_frame_;
     pose_msg.child_frame_id = camera_frame_;
-    pose_msg.pose.pose = tf2::toMsg(map_to_camera_affine * rot_ros_to_cv_map_frame_.inverse());
+    pose_msg.pose.pose = tf2::toMsg(map_to_camera_affine * rot_ros_to_cv_coordinate_.inverse());
     pose_pub_->publish(pose_msg);
 
     // Send map->odom transform. Set publish_tf to false if not using TF
@@ -74,8 +74,8 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time
 
             geometry_msgs::msg::TransformStamped map_to_odom_msg;
             if (odom2d_) {
-                Eigen::Affine3d map_to_camera_affine_2d = project_to_xy_plane(map_to_camera_affine * rot_ros_to_cv_map_frame_.inverse()) * rot_ros_to_cv_map_frame_;
-                Eigen::Affine3d camera_to_odom_affine_2d = (project_to_xy_plane(camera_to_odom_affine.inverse() * rot_ros_to_cv_map_frame_.inverse()) * rot_ros_to_cv_map_frame_).inverse();
+                Eigen::Affine3d map_to_camera_affine_2d = project_to_xy_plane(map_to_camera_affine * rot_ros_to_cv_coordinate_.inverse()) * rot_ros_to_cv_coordinate_;
+                Eigen::Affine3d camera_to_odom_affine_2d = (project_to_xy_plane(camera_to_odom_affine.inverse() * rot_ros_to_cv_coordinate_.inverse()) * rot_ros_to_cv_coordinate_).inverse();
                 Eigen::Affine3d map_to_odom_affine_2d = map_to_camera_affine_2d * camera_to_odom_affine_2d;
                 map_to_odom_msg = tf2::eigenToTransform(map_to_odom_affine_2d);
             }
@@ -110,7 +110,7 @@ void system::publish_keyframes(const rclcpp::Time& stamp) {
         Eigen::Matrix3d rot(cam_pose_wc.block<3, 3>(0, 0));
         Eigen::Translation3d trans(cam_pose_wc.block<3, 1>(0, 3));
         Eigen::Affine3d map_to_camera_affine(trans * rot);
-        Eigen::Affine3d pose_affine = rot_ros_to_cv_map_frame_ * map_to_camera_affine * rot_ros_to_cv_map_frame_.inverse();
+        Eigen::Affine3d pose_affine = ros_map_to_cv_map_affine_ * map_to_camera_affine * rot_ros_to_cv_coordinate_.inverse();
         keyframes_msg.poses.push_back(tf2::toMsg(pose_affine));
         keyframes_2d_msg.poses.push_back(tf2::toMsg(project_to_xy_plane(pose_affine)));
     }
@@ -142,6 +142,11 @@ void system::setParams() {
 
     transform_tolerance_ = 0.5;
     transform_tolerance_ = node_->declare_parameter("transform_tolerance", transform_tolerance_);
+
+    std::vector<double> ros_map_to_cv_map_frame{0.0, 0.0, 0.0, 0.5, -0.5, 0.5, -0.5}; // x, y, z, qx, qy, qz, qw
+    ros_map_to_cv_map_frame = node_->declare_parameter("ros_map_to_cv_map_frame", ros_map_to_cv_map_frame);
+    ros_map_to_cv_map_affine_ = Eigen::Translation<double, 3>(ros_map_to_cv_map_frame[0], ros_map_to_cv_map_frame[1], ros_map_to_cv_map_frame[2])
+                                * Eigen::Quaterniond(ros_map_to_cv_map_frame[6], ros_map_to_cv_map_frame[3], ros_map_to_cv_map_frame[4], ros_map_to_cv_map_frame[5]);
 }
 
 void system::init_pose_callback(
@@ -204,8 +209,8 @@ void system::init_pose_callback(
                                    * initialpose_affine * robot_base_frame_to_camera_affine)
                                       .matrix();
 
-    const Eigen::Vector3d normal_vector = (Eigen::Vector3d() << 0., 1., 0.).finished();
-    if (!slam_->relocalize_by_pose_2d(cam_pose_cv, normal_vector)) {
+    const Eigen::Vector3d normal_vector = (Eigen::Vector3d() << 0., 0., 1.).finished();
+    if (!slam_->relocalize_by_pose_2d(cam_pose_cv, ros_map_to_cv_map_affine_.inverse().linear() * normal_vector)) {
         RCLCPP_ERROR(node_->get_logger(), "Can not set initial pose");
     }
 }
