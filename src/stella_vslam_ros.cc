@@ -199,13 +199,13 @@ void system::init_pose_callback(
     }
 
     // Target transform is map_cv -> camera_link and known parameters are following:
-    //   rot_cv_to_ros_map_frame: T(map_cv -> map)
+    //   ros_map_to_cv_map_affine_.inverse(): T(map_cv -> map)
     //   map_to_initialpose_frame_affine: T(map -> `msg->header.frame_id`)
     //   initialpose_affine: T(`msg->header.frame_id` -> base_link)
     //   robot_base_frame_to_camera_affine: T(base_link -> camera_link)
     // The flow of the transformation is as follows:
     //   map_cv -> map -> `msg->header.frame_id` -> base_link -> camera_link
-    Eigen::Matrix4d cam_pose_cv = (rot_cv_to_ros_map_frame * map_to_initialpose_frame_affine
+    Eigen::Matrix4d cam_pose_cv = (ros_map_to_cv_map_affine_.inverse() * map_to_initialpose_frame_affine
                                    * initialpose_affine * robot_base_frame_to_camera_affine)
                                       .matrix();
 
