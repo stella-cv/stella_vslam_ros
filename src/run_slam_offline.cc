@@ -49,6 +49,7 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
               const std::string& color_topic,
               const std::string& depth_topic,
               const std::string& bag_storage_id,
+              const double start_offset,
               const bool no_sleep,
               const std::string& viewer_string) {
     auto& SLAM = slam_ros->slam_;
@@ -108,6 +109,12 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
     storage_options.storage_id = bag_storage_id;
     rosbag2_cpp::Reader reader;
     reader.open(storage_options);
+    auto metadata = reader.get_metadata();
+    auto starting_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                             metadata.starting_time.time_since_epoch())
+                             .count()
+                         + start_offset * 1e9;
+    reader.seek(starting_time);
     rclcpp::Serialization<sensor_msgs::msg::Image> serialization;
     std::queue<std::shared_ptr<sensor_msgs::msg::Image>> que;
     double track_time;
@@ -290,6 +297,7 @@ int main(int argc, char* argv[]) {
     auto color_topic = op.add<popl::Value<std::string>>("", "color", "color image topic name for RGBD", "camera/color/image_raw");
     auto depth_topic = op.add<popl::Value<std::string>>("", "depth", "depth image topic name for RGBD", "camera/depth/image_raw");
     auto bag_storage_id = op.add<popl::Value<std::string>>("", "storage-id", "rosbag2 storage id (default: sqlite3)", "sqlite3");
+    auto start_offset = op.add<popl::Value<double>>("", "start-offset", "start offset", 0.0);
     auto vocab_file_path = op.add<popl::Value<std::string>>("v", "vocab", "vocabulary file path");
     auto setting_file_path = op.add<popl::Value<std::string>>("c", "config", "setting file path");
     auto mask_img_path = op.add<popl::Value<std::string>>("", "mask", "mask image path", "");
@@ -430,6 +438,7 @@ int main(int argc, char* argv[]) {
         color_topic->value(),
         depth_topic->value(),
         bag_storage_id->value(),
+        start_offset->value(),
         no_sleep->is_set(),
         viewer_string);
 
