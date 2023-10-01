@@ -65,10 +65,12 @@ public:
     // If true, odom_frame is fixed on the xy-plane of map_frame. This is useful when working with 2D navigation modules.
     bool odom2d_;
 
+    Eigen::Affine3d ros_map_to_cv_map_affine_;
+
 private:
     void init_pose_callback(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg);
 
-    Eigen::AngleAxisd rot_ros_to_cv_map_frame_;
+    Eigen::AngleAxisd rot_ros_to_cv_coordinate_;
 };
 
 class mono : public system {
