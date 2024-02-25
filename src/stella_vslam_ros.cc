@@ -142,6 +142,9 @@ void system::setParams() {
 
     transform_tolerance_ = 0.5;
     transform_tolerance_ = node_->declare_parameter("transform_tolerance", transform_tolerance_);
+
+    encoding_ = "";
+    encoding_ = node_->declare_parameter("encoding", encoding_);
 }
 
 void system::init_pose_callback(
@@ -227,7 +230,7 @@ void mono::callback(sensor_msgs::msg::Image::UniquePtr msg_unique_ptr) {
     const double timestamp = rclcpp::Time(msg->header.stamp).seconds();
 
     // input the current frame and estimate the camera pose
-    auto cam_pose_wc = slam_->feed_monocular_frame(cv_bridge::toCvShare(msg)->image, timestamp, mask_);
+    auto cam_pose_wc = slam_->feed_monocular_frame(cv_bridge::toCvShare(msg, encoding_)->image, timestamp, mask_);
 
     const rclcpp::Time tp_2 = node_->now();
     const double track_time = (tp_2 - tp_1).seconds();
@@ -251,7 +254,7 @@ void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
     const double timestamp = rclcpp::Time(msg->header.stamp).seconds();
 
     // input the current frame and estimate the camera pose
-    auto cam_pose_wc = slam_->feed_monocular_frame(cv_bridge::toCvShare(msg)->image, timestamp, mask_);
+    auto cam_pose_wc = slam_->feed_monocular_frame(cv_bridge::toCvShare(msg, encoding_)->image, timestamp, mask_);
 
     const rclcpp::Time tp_2 = node_->now();
     const double track_time = (tp_2 - tp_1).seconds();
@@ -291,8 +294,8 @@ void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const
     if (camera_optical_frame_.empty()) {
         camera_optical_frame_ = left->header.frame_id;
     }
-    auto leftcv = cv_bridge::toCvShare(left)->image;
-    auto rightcv = cv_bridge::toCvShare(right)->image;
+    auto leftcv = cv_bridge::toCvShare(left, encoding_)->image;
+    auto rightcv = cv_bridge::toCvShare(right, encoding_)->image;
     if (leftcv.empty() || rightcv.empty()) {
         return;
     }
@@ -343,8 +346,8 @@ void rgbd::callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const 
     if (camera_optical_frame_.empty()) {
         camera_optical_frame_ = color->header.frame_id;
     }
-    auto colorcv = cv_bridge::toCvShare(color)->image;
-    auto depthcv = cv_bridge::toCvShare(depth)->image;
+    auto colorcv = cv_bridge::toCvShare(color, encoding_)->image;
+    auto depthcv = cv_bridge::toCvShare(depth, encoding_)->image;
     if (colorcv.empty() || depthcv.empty()) {
         return;
     }
