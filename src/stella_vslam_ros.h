@@ -32,6 +32,7 @@ public:
     void publish_pointcloud(const ros::Time& stamp);
     void publish_keyframes(const ros::Time& stamp);
     void setParams();
+    void publish_Loss(bool loss); 
 
     std::shared_ptr<stella_vslam::system> slam_;
     ros::NodeHandle nh_;
@@ -44,6 +45,7 @@ public:
     ros::Publisher pc_pub_;
     ros::Publisher keyframes_pub_;
     ros::Publisher keyframes_2d_pub_;
+    ros::Publisher publish_loss_pub_;
     ros::Subscriber init_pose_sub_;
     std::shared_ptr<tf2_ros::TransformBroadcaster> map_to_odom_broadcaster_;
     std::string odom_frame_;

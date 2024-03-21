@@ -14,6 +14,8 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <Eigen/Geometry>
+#include <std_msgs/Bool.h>
+
 
 namespace {
 Eigen::Affine3d project_to_xy_plane(const Eigen::Affine3d& affine) {
@@ -37,11 +39,13 @@ system::system(const std::shared_ptr<stella_vslam::system>& slam,
       pc_pub_(private_nh_.advertise<sensor_msgs::PointCloud2>("pointcloud", 1)),
       keyframes_pub_(private_nh_.advertise<geometry_msgs::PoseArray>("keyframes", 1)),
       keyframes_2d_pub_(private_nh_.advertise<geometry_msgs::PoseArray>("keyframes_2d", 1)),
+      publish_loss_pub_(private_nh_.advertise<std_msgs::Bool>("loss", 1)),
+
       map_to_odom_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>()),
       tf_(std::make_unique<tf2_ros::Buffer>()),
       transform_listener_(std::make_shared<tf2_ros::TransformListener>(*tf_)) {
     init_pose_sub_ = nh_.subscribe(
-        "/initialpose", 1, &system::init_pose_callback, this);
+        "/videofile_frame", 1, &system::init_pose_callback, this); // /initialpose 
     setParams();
     rot_ros_to_cv_map_frame_ = (Eigen::Matrix3d() << 0, 0, 1,
                                 -1, 0, 0,
@@ -53,7 +57,11 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& s
     // Extract rotation matrix and translation vector from
     Eigen::Matrix3d rot(cam_pose_wc.block<3, 3>(0, 0));
     Eigen::Translation3d trans(cam_pose_wc.block<3, 1>(0, 3));
+
+
     Eigen::Affine3d map_to_camera_affine(trans * rot);
+    // Eigen::Affine3d map_to_camera_affine(trans);
+
 
     // Transform map frame from CV coordinate system to ROS coordinate system
     map_to_camera_affine.prerotate(rot_ros_to_cv_map_frame_);
@@ -63,12 +71,17 @@ void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& s
     pose_msg.header.stamp = stamp;
     pose_msg.header.frame_id = map_frame_;
     pose_msg.child_frame_id = camera_frame_;
-    pose_msg.pose.pose = tf2::toMsg(map_to_camera_affine * rot_ros_to_cv_map_frame_.inverse());
-    pose_pub_.publish(pose_msg);
+
+
+    // pose_msg.pose.pose = tf2::toMsg(map_to_camera_affine * rot_ros_to_cv_map_frame_.inverse());
+    pose_msg.pose.pose = tf2::toMsg(map_to_camera_affine);
+
 
     // Send map->odom transform. Set publish_tf to false if not using TF
+    pose_pub_.publish(pose_msg);
     if (publish_tf_) {
         try {
+            std::cout << camera_optical_frame_ << " " << odom_frame_ << std::endl;
             auto camera_to_odom = tf_->lookupTransform(camera_optical_frame_, odom_frame_, stamp, ros::Duration(0.0));
             Eigen::Affine3d camera_to_odom_affine = tf2::transformToEigen(camera_to_odom.transform);
 
@@ -224,7 +237,16 @@ void system::init_pose_callback(
         ROS_ERROR("Can not set initial pose");
     }
 }
+//////////////
+bool loss = false;
 
+void system::publish_Loss(bool loss)
+{
+    std_msgs::Bool msg;
+    msg.data = loss;
+    publish_loss_pub_.publish(msg);
+}
+/////////////
 mono::mono(const std::shared_ptr<stella_vslam::system>& slam,
            const std::string& mask_img_path)
     : system(slam, mask_img_path) {
@@ -246,7 +268,13 @@ void mono::callback(const sensor_msgs::ImageConstPtr& msg) {
     track_times_.push_back(track_time);
 
     if (cam_pose_wc) {
+        loss = false;
+        publish_Loss(loss);
         publish_pose(*cam_pose_wc, msg->header.stamp);
+    }
+    else{
+        loss = true;
+        publish_Loss(loss);
     }
 
     if (publish_pointcloud_) {
@@ -365,4 +393,5 @@ void rgbd::callback(const sensor_msgs::ImageConstPtr& color, const sensor_msgs::
         publish_keyframes(color->header.stamp);
     }
 }
+
 } // namespace stella_vslam_ros
