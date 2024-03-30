@@ -1,6 +1,9 @@
 #ifdef HAVE_PANGOLIN_VIEWER
 #include "pangolin_viewer/viewer.h"
 #endif
+#ifdef HAVE_IRIDESCENCE_VIEWER
+#include "iridescence_viewer/viewer.h"
+#endif
 #ifdef HAVE_SOCKET_PUBLISHER
 #include "socket_publisher/publisher.h"
 #endif
@@ -43,6 +46,9 @@ public:
 #ifdef HAVE_PANGOLIN_VIEWER
     std::shared_ptr<pangolin_viewer::viewer> viewer_;
 #endif
+#ifdef HAVE_IRIDESCENCE_VIEWER
+    std::shared_ptr<iridescence_viewer::viewer> iridescence_viewer_;
+#endif
 #ifdef HAVE_SOCKET_PUBLISHER
     std::shared_ptr<socket_publisher::publisher> publisher_;
 #endif
@@ -73,13 +79,22 @@ System::System(
     // viewer
     if (!viewer.empty()) {
         viewer_string_ = viewer;
-        if (viewer_string_ != "pangolin_viewer" && viewer_string_ != "socket_publisher" && viewer_string_ != "none") {
+        if (viewer_string_ != "pangolin_viewer"
+            && viewer_string_ != "socket_publisher"
+            && viewer_string_ != "iridescence_viewer"
+            && viewer_string_ != "none") {
             RCLCPP_FATAL(get_logger(), "invalid arguments (--viewer)");
             return;
         }
 #ifndef HAVE_PANGOLIN_VIEWER
         if (viewer_string_ == "pangolin_viewer") {
             RCLCPP_FATAL(get_logger(), "pangolin_viewer not linked");
+            return;
+        }
+#endif
+#ifndef HAVE_IRIDESCENCE_VIEWER
+        if (viewer_string_ == "iridescence_viewer") {
+            RCLCPP_FATAL(get_logger(), "iridescence_viewer not linked");
             return;
         }
 #endif
@@ -91,7 +106,9 @@ System::System(
 #endif
     }
     else {
-#ifdef HAVE_PANGOLIN_VIEWER
+#ifdef HAVE_IRIDESCENCE_VIEWER
+        viewer_string_ = "iridescence_viewer";
+#elif defined(HAVE_PANGOLIN_VIEWER)
         viewer_string_ = "pangolin_viewer";
 #elif defined(HAVE_SOCKET_PUBLISHER)
         viewer_string_ = "socket_publisher";
@@ -155,6 +172,28 @@ System::System(
             slam_->get_map_publisher());
     }
 #endif
+#ifdef HAVE_IRIDESCENCE_VIEWER
+    std::mutex mtx_terminate;
+    bool terminate_is_requested = false;
+    if (viewer_string_ == "iridescence_viewer") {
+        iridescence_viewer_ = std::make_shared<iridescence_viewer::viewer>(
+            stella_vslam::util::yaml_optional_ref(cfg->yaml_node_, "IridescenceViewer"),
+            SLAM->get_frame_publisher(),
+            SLAM->get_map_publisher());
+        iridescence_viewer_->add_button("Reset", [&SLAM] {
+            SLAM->request_reset();
+        });
+        iridescence_viewer_->add_button("Save and exit", [&terminate_is_requested, &mtx_terminate, &iridescence_viewer] {
+            std::lock_guard<std::mutex> lock(mtx_terminate);
+            terminate_is_requested = true;
+            iridescence_viewer->request_terminate();
+        });
+        iridescence_viewer_->add_close_callback([&terminate_is_requested, &mtx_terminate] {
+            std::lock_guard<std::mutex> lock(mtx_terminate);
+            terminate_is_requested = true;
+        });
+    }
+#endif
 #ifdef HAVE_SOCKET_PUBLISHER
     if (viewer_string_ == "socket_publisher") {
         publisher_ = std::make_shared<socket_publisher::publisher>(
@@ -172,6 +211,11 @@ System::System(
             if (viewer_string_ == "pangolin_viewer") {
 #ifdef HAVE_PANGOLIN_VIEWER
                 viewer_->run();
+#endif
+            }
+            if (viewer_string_ == "iridescence_viewer") {
+#ifdef HAVE_IRIDESCENCE_VIEWER
+                iridescence_viewer_->run();
 #endif
             }
             if (viewer_string_ == "socket_publisher") {
@@ -195,6 +239,11 @@ System::~System() {
     if (viewer_string_ == "pangolin_viewer") {
 #ifdef HAVE_PANGOLIN_VIEWER
         viewer_->request_terminate();
+#endif
+    }
+    if (viewer_string_ == "iridescence_viewer") {
+#ifdef HAVE_IRIDESCENCE_VIEWER
+        iridescence_viewer_->request_terminate();
 #endif
     }
     if (viewer_string_ == "socket_publisher") {

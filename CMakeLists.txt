@@ -185,6 +185,11 @@ find_package(socket_publisher QUIET)
 if(socket_publisher_FOUND)
     message(STATUS "Viewer for examples: SocketPublisher")
 endif()
+find_package(iridescence_viewer QUIET)
+if(iridescence_viewer_FOUND)
+    message(STATUS "Viewer for examples: IridescenceViewer")
+endif()
+
 
 #########
 # Build #
@@ -211,6 +216,15 @@ if(socket_publisher_FOUND)
     target_link_libraries(stella_vslam_ros_system PRIVATE
         socket_publisher::socket_publisher ${SIOCLIENT_LIBRARY} ${PROTOBUF_LIBRARIES})
 endif()
+if(iridescence_viewer_FOUND)
+    # Set macro flag
+    target_compile_definitions(stella_vslam_ros_system
+        PRIVATE HAVE_IRIDESCENCE_VIEWER)
+    # Link viewer
+    target_link_libraries(stella_vslam_ros_system PRIVATE
+        iridescence_viewer::iridescence_viewer)
+endif()
+
 # TODO: Move heder files to include directory
 target_include_directories(stella_vslam_ros_system PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>

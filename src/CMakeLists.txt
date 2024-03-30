@@ -1,10 +1,3 @@
-if(pangolin_viewer_FOUND)
-    message(STATUS "Viewer for examples: pangolin viewer")
-endif()
-if(socket_publisher_FOUND)
-    message(STATUS "Viewer for examples: socket publisher")
-endif()
-
 set(EXECUTABLE_TARGETS "")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
@@ -29,6 +22,14 @@ foreach(EXECUTABLE_TARGET IN LISTS EXECUTABLE_TARGETS)
         # link viewer
         target_link_libraries(${EXECUTABLE_TARGET} PRIVATE
                 socket_publisher::socket_publisher ${SIOCLIENT_LIBRARY} ${PROTOBUF_LIBRARIES})
+    endif()
+    if(iridescence_viewer_FOUND)
+        # Set macro flag
+        target_compile_definitions(${EXECUTABLE_TARGET}
+                PRIVATE HAVE_IRIDESCENCE_VIEWER)
+        # Link viewer
+        target_link_libraries(${EXECUTABLE_TARGET} PRIVATE
+                iridescence_viewer::iridescence_viewer)
     endif()
 
     # setup stack trace logger
