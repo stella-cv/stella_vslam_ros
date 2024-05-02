@@ -34,10 +34,8 @@ foreach(EXECUTABLE_TARGET IN LISTS EXECUTABLE_TARGETS)
 
     # setup stack trace logger
     if(USE_STACK_TRACE_LOGGER)
-        target_compile_definitions(${EXECUTABLE_TARGET}
-                PRIVATE -DUSE_STACK_TRACE_LOGGER)
-        target_link_libraries(${EXECUTABLE_TARGET} PRIVATE
-                ${GLOG_LIBRARIES})
+        target_compile_definitions(${EXECUTABLE_TARGET} PRIVATE USE_STACK_TRACE_LOGGER)
+        target_link_libraries(${EXECUTABLE_TARGET} PRIVATE Backward::Backward)
     endif()
 
     # setup google-perftools

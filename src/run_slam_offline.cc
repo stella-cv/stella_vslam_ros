@@ -29,7 +29,7 @@
 namespace fs = ghc::filesystem;
 
 #ifdef USE_STACK_TRACE_LOGGER
-#include <glog/logging.h>
+#include <backward.hpp>
 #endif
 
 #ifdef USE_GOOGLE_PERFTOOLS
@@ -313,8 +313,7 @@ void tracking(const std::shared_ptr<stella_vslam_ros::system>& slam_ros,
 
 int main(int argc, char* argv[]) {
 #ifdef USE_STACK_TRACE_LOGGER
-    google::InitGoogleLogging(argv[0]);
-    google::InstallFailureSignalHandler();
+    backward::SignalHandling sh;
 #endif
     rclcpp::init(argc, argv);
 

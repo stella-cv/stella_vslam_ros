@@ -40,13 +40,10 @@ else()
     message(STATUS "Address/Memory sanitizer: DISABLED")
 endif()
 
-set(USE_STACK_TRACE_LOGGER OFF CACHE BOOL "Enable automatic stack trace logger of google-glog")
-
+set(USE_STACK_TRACE_LOGGER OFF CACHE BOOL "Enable automatic stack trace logger of backward-cpp")
 if(USE_STACK_TRACE_LOGGER)
+    find_package(Backward REQUIRED)
     message(STATUS "Stack trace logger: ENABLED")
-    # Glog
-    find_package(Glog REQUIRED)
-    include_directories(${GLOG_INCLUDE_DIR})
 else()
     message(STATUS "Stack trace logger: DISABLED")
 endif()
