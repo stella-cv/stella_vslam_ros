@@ -235,7 +235,7 @@ void mono::callback(const sensor_msgs::ImageConstPtr& msg) {
         camera_optical_frame_ = msg->header.frame_id;
     }
     const auto tp_1 = std::chrono::steady_clock::now();
-    const auto timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(tp_1 - tp_0_).count();
+    const auto timestamp = msg->header.stamp.toSec();
 
     // input the current frame and estimate the camera pose
     auto cam_pose_wc = slam_->feed_monocular_frame(cv_bridge::toCvShare(msg)->image, timestamp, mask_);
@@ -291,7 +291,7 @@ void stereo::callback(const sensor_msgs::ImageConstPtr& left, const sensor_msgs:
     }
 
     const auto tp_1 = std::chrono::steady_clock::now();
-    const auto timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(tp_1 - tp_0_).count();
+    const auto timestamp = left->header.stamp.toSec();
 
     // input the current frame and estimate the camera pose
     auto cam_pose_wc = slam_->feed_stereo_frame(leftcv, rightcv, timestamp, mask_);
@@ -344,7 +344,7 @@ void rgbd::callback(const sensor_msgs::ImageConstPtr& color, const sensor_msgs::
     }
 
     const auto tp_1 = std::chrono::steady_clock::now();
-    const auto timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(tp_1 - tp_0_).count();
+    const auto timestamp = color->header.stamp.toSec();
 
     // input the current frame and estimate the camera pose
     auto cam_pose_wc = slam_->feed_RGBD_frame(colorcv, depthcv, timestamp, mask_);
