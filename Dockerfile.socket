@@ -128,6 +128,7 @@ RUN set -x && \
   apt-get update -y -qq && \
   : "install ROS packages" && \
   apt-get install -y -qq \
+    ros-${ROS_DISTRO}-perception \
     ros-${ROS_DISTRO}-image-transport \
     ros-${ROS_DISTRO}-cv-bridge \
     ros-${ROS_DISTRO}-geometry2 && \
