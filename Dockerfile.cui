@@ -21,6 +21,8 @@ RUN set -x && \
     libgoogle-glog-dev \
     libatlas-base-dev \
     libsuitesparse-dev && \
+  : "backward-cpp dependencies" && \
+  apt install -y -qq binutils-dev && \
   : "other dependencies" && \
   apt-get install -y -qq \
     libyaml-cpp-dev \ 
@@ -41,6 +43,24 @@ ENV LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib:${LD_LIBRARY_PATH}
 
 ENV NVIDIA_VISIBLE_DEVICES ${NVIDIA_VISIBLE_DEVICES:-all}
 ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
+
+# backward-cpp
+ARG BACKWARD_CPP_COMMIT=5ffb2c879ebdbea3bdb8477c671e32b1c984beaa
+WORKDIR /tmp
+RUN set -x && \
+  git clone https://github.com/bombela/backward-cpp.git && \
+  cd backward-cpp && \
+  git checkout ${BACKWARD_CPP_COMMIT} && \
+  mkdir -p build && \
+  cd build && \
+  cmake \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} \
+    .. && \
+  make -j${NUM_THREADS} && \
+  make install && \
+  cd /tmp && \
+  rm -rf *
 
 # stella_vslam
 RUN set -x && \
