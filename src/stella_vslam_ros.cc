@@ -32,6 +32,7 @@ system::system(const std::shared_ptr<stella_vslam::system>& slam,
       pose_pub_(node_->create_publisher<nav_msgs::msg::Odometry>("~/camera_pose", 1)),
       keyframes_pub_(node_->create_publisher<geometry_msgs::msg::PoseArray>("~/keyframes", 1)),
       keyframes_2d_pub_(node_->create_publisher<geometry_msgs::msg::PoseArray>("~/keyframes_2d", 1)),
+      atlas_cloud_pub_(node_->create_publisher<sensor_msgs::msg::PointCloud2>("~/atlas", 1)),
       map_to_odom_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>(node_)),
       tf_(std::make_unique<tf2_ros::Buffer>(node_->get_clock())),
       transform_listener_(std::make_shared<tf2_ros::TransformListener>(*tf_)) {
@@ -116,6 +117,40 @@ void system::publish_keyframes(const rclcpp::Time& stamp) {
     }
     keyframes_pub_->publish(keyframes_msg);
     keyframes_2d_pub_->publish(keyframes_2d_msg);
+}
+
+void system::publish_atlas_as_cloud(const rclcpp::Time& stamp) {
+    std::vector<std::shared_ptr<stella_vslam::data::landmark> > landmarks;
+    std::set<std::shared_ptr<stella_vslam::data::landmark> > local_landmarks;
+    slam_->get_map_publisher()->get_landmarks(landmarks, local_landmarks);
+
+    sensor_msgs::msg::PointCloud2 cloud_msg;
+    cloud_msg.header.stamp = stamp;
+    cloud_msg.header.frame_id = map_frame_;
+    cloud_msg.is_dense = true;
+    cloud_msg.is_bigendian = false;
+    cloud_msg.width = 1;
+    cloud_msg.height = landmarks.size();
+
+    sensor_msgs::PointCloud2Modifier pcl2(cloud_msg);
+    pcl2.setPointCloud2FieldsByString(1, "xyz");
+    pcl2.resize(landmarks.size());
+
+    sensor_msgs::PointCloud2Iterator<float> iter_x(cloud_msg, "x");
+    sensor_msgs::PointCloud2Iterator<float> iter_y(cloud_msg, "y");
+    sensor_msgs::PointCloud2Iterator<float> iter_z(cloud_msg, "z");
+
+    for (size_t key = 0; key < landmarks.size(); ++key, ++iter_x, ++iter_y, ++iter_z) {
+        auto lm = landmarks.at(key);
+        if (!lm || lm->will_be_erased()) {
+            continue;
+        }
+        const auto pos = lm->get_pos_in_world();
+        *iter_x = pos.x();
+        *iter_y = pos.y();
+        *iter_z = pos.z();
+    }
+    atlas_cloud_pub_->publish(cloud_msg);
 }
 
 void system::setParams() {
@@ -244,6 +279,9 @@ void mono::callback(sensor_msgs::msg::Image::UniquePtr msg_unique_ptr) {
     if (publish_keyframes_) {
         publish_keyframes(msg->header.stamp);
     }
+    if (node_->count_subscribers(atlas_cloud_pub_->get_topic_name()) > 0) {
+        publish_atlas_as_cloud(msg->header.stamp);
+    }
 }
 
 void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
@@ -267,6 +305,9 @@ void mono::callback(const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
     }
     if (publish_keyframes_) {
         publish_keyframes(msg->header.stamp);
+    }
+    if (node_->count_subscribers(atlas_cloud_pub_->get_topic_name()) > 0) {
+        publish_atlas_as_cloud(msg->header.stamp);
     }
 }
 
@@ -322,6 +363,9 @@ void stereo::callback(const sensor_msgs::msg::Image::ConstSharedPtr& left, const
     if (publish_keyframes_) {
         publish_keyframes(left->header.stamp);
     }
+    if (node_->count_subscribers(atlas_cloud_pub_->get_topic_name()) > 0) {
+        publish_atlas_as_cloud(left->header.stamp);
+    }
 }
 
 rgbd::rgbd(const std::shared_ptr<stella_vslam::system>& slam,
@@ -372,6 +416,9 @@ void rgbd::callback(const sensor_msgs::msg::Image::ConstSharedPtr& color, const 
     }
     if (publish_keyframes_) {
         publish_keyframes(color->header.stamp);
+    }
+    if (node_->count_subscribers(atlas_cloud_pub_->get_topic_name()) > 0) {
+        publish_atlas_as_cloud(color->header.stamp);
     }
 }
 
