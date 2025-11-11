@@ -28,7 +28,7 @@ jobs:
       run:
         shell: bash
     container:
-      image: ghcr.io/ymd-stella/stella-cv/stella_vslam-ros2:humble
+      image: ghcr.io/ymd-stella/stella-cv/stella_vslam-ros2:iron
       env:
         ROS_LOG_DIR: ${GITHUB_WORKSPACE}/.ros
     steps:
@@ -92,7 +92,7 @@ jobs:
       run:
         shell: bash
     container:
-      image: ghcr.io/ymd-stella/stella-cv/ros:humble-ros-base
+      image: ghcr.io/ymd-stella/stella-cv/ros:iron-ros-base
       env:
         ROS_LOG_DIR: ${GITHUB_WORKSPACE}/.ros
     steps:
